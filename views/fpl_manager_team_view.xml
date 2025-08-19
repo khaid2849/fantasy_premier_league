@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0">
                 <header>
-                    <button name="action_verify_team_data" type="object" string="Verify Team Data" class="btn-primary"/>
+                    <button name="action_verify_team_data" type="object" string="Verify Team Data"/>
                 </header>
                 <field name="name"/>
                 <field name="full_name"/>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_manager_team_wizard_form" model="ir.ui.view">
+        <field name="name">fpl.manager.team.wizard.form</field>
+        <field name="model">fpl.manager.team.wizard</field>
+        <field name="arch" type="xml">
+            <form string="FPL Manager Team Wizard">
+                <sheet>
+                <group>
+                    <field name="manager_id" required="1"/>
+                    <field name="cookies" required="1"/>
+                    <field name="token" required="1"/>
+                </group>
+
+                <group>
+                    <field name="tooltip"
+                        class="fst-italic text-muted"
+                        string=""
+                    />
+                </group>
+
+                <group>
+                    <field name="manager_id" required="1"/>
+                    <field name="cookies" required="1"/>
+                    <field name="token" required="1"/>
+                </group>
+                </sheet>
+                <footer>
+                    <button name="action_verify_manager_team" type="object" class="btn-primary"/>
+                    <button string="Cancel" type="object" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="fpl_manager_team_wizard_action" model="ir.actions.act_window">
+        <field name="name">FPL Manager Team Wizard</field>
+        <field name="res_model">fpl.manager.team.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

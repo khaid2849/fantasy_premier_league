@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_manager_team_tree" model="ir.ui.view">
+        <field name="name">fpl.manager.team.tree</field>
+        <field name="model">fpl.manager.team</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_verify_team_data" type="object" string="Verify Team Data" class="btn-primary"/>
+                </header>
+                <field name="name"/>
+                <field name="full_name"/>
+                <field name="first_name" invisible="1"/>
+                <field name="last_name" invisible="1"/>
+                <field name="manager_id"/>
+                <field name="email" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_manager_team_form" model="ir.ui.view">
+        <field name="name">fpl.manager.team.form</field>
+        <field name="model">fpl.manager.team</field>
+        <field name="arch" type="xml">
+            <form string="FPL Manager Team Wizard" delete="0" create="0" edit="0">
+                <sheet>
+                    <!-- <field name="image_1920" widget="image" class="oe_avatar" options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/> -->
+                    <div class="oe_title mb24">
+                        <h1>
+                            <field widget="text" class="text-break" name="name" default_focus="1"/>
+                        </h1>
+                        <div class="o_row">
+                            <field name="full_name"/>
+                        </div>
+                    </div>
+                    <group string="Personal Info">
+                        <group>
+                            <field name="full_name"/>
+                            <field name="email"/>
+                        </group>
+                        <group>
+                            <field name="date_of_birth"/>
+                            <field name="gender"/>
+                        </group>
+                    </group>
+                    <group string="Points & Rankings">
+                        <group>
+                            <field name="summary_overall_points"/>
+                            <field name="summary_overall_rank"/>
+                        </group>
+                        <group>
+                            <field name="summary_event_points"/>
+                            <field name="summary_event_rank"/>
+                        </group>
+                    </group>
+                    <group string="Transfer Info">
+                        <group>
+                            <field name="limit"/>
+                            <field name="made"/>
+                        </group>
+                        <group>
+                            <field name="bank"/>
+                            <field name="value"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Picks">
+                            <field name="pick_ids" nolabel="1">
+                                <list>
+                                    <field name="element_id"/>
+                                    <field name="position"/>
+                                    <field name="team"/>
+                                    <field name="is_captain"/>
+                                    <field name="is_vice_captain"/>
+                                    <field name="element_type"/>
+                                    <field name="selling_price"/>
+                                    <field name="purchase_price"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Leagues">
+                            <field name="league_ids" nolabel="1">
+                                <list>
+                                    <field name="name"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Chips">
+                            <field name="manager_chips" nolabel="1">
+                                <list>
+                                    <field name="chip_id"/>
+                                    <field name="status_for_entry"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="fpl_manager_team_action" model="ir.actions.act_window">
+        <field name="name">FPL Manager Team</field>
+        <field name="res_model">fpl.manager.team</field>
+        <field name="view_mode">form</field>
+    </record>
+</odoo>

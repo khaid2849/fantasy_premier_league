@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fpl_manager_team_user,access_fpl_manager_team_user,model_fpl_manager_team,base.group_user,1,1,1,1
+access_fpl_chips_user,access_fpl_chips_user,model_fpl_chips,base.group_user,1,1,1,1
+access_fpl_element_types_user,access_fpl_element_types_user,model_fpl_element_types,base.group_user,1,1,1,1
+access_fpl_elements_user,access_fpl_elements_user,model_fpl_elements,base.group_user,1,1,1,1
+access_fpl_events_user,access_fpl_events_user,model_fpl_events,base.group_user,1,1,1,1
+access_fpl_leagues_user,access_fpl_leagues_user,model_fpl_leagues,base.group_user,1,1,1,1
+access_fpl_manager_chips_user,access_fpl_manager_chips_user,model_fpl_manager_chips,base.group_user,1,1,1,1
+access_fpl_manager_team_user,access_fpl_manager_team_user,model_fpl_manager_team,base.group_user,1,1,1,1
+access_fpl_phases_user,access_fpl_phases_user,model_fpl_phases,base.group_user,1,1,1,1
+access_fpl_picks_user,access_fpl_picks_user,model_fpl_picks,base.group_user,1,1,1,1
+access_fpl_teams_user,access_fpl_teams_user,model_fpl_teams,base.group_user,1,1,1,1

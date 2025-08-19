@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo> 
+    <menuitem name="Fantasy Premier League" id="menu_fpl_root" web_icon="fantasy_premier_league,static/description/icon.png"/>
+
+    <menuitem id="menu_fpl_manager_team_root" name="Your FPL Team" parent="menu_fpl_root" sequence="1"/>
+    <menuitem id="menu_fpl_manager_team" name="Manager Team" parent="menu_fpl_manager_team_root" sequence="1" action="fantasy_premier_league.fpl_manager_team_action"/>
+</odoo>

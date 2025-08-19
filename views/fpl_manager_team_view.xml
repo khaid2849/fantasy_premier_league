@@ -43,7 +43,7 @@
                             <field name="gender"/>
                         </group>
                     </group>
-                    <group string="Points & Rankings">
+                    <!-- <group string="Points & Rankings">
                         <group>
                             <field name="summary_overall_points"/>
                             <field name="summary_overall_rank"/>
@@ -62,7 +62,7 @@
                             <field name="bank"/>
                             <field name="value"/>
                         </group>
-                    </group>
+                    </group> -->
 
                     <notebook>
                         <page string="Picks">
@@ -105,6 +105,6 @@
     <record id="fpl_manager_team_action" model="ir.actions.act_window">
         <field name="name">FPL Manager Team</field>
         <field name="res_model">fpl.manager.team</field>
-        <field name="view_mode">form</field>
+        <field name="view_mode">list,form</field>
     </record>
 </odoo>

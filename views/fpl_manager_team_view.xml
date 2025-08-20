@@ -4,10 +4,7 @@
         <field name="name">fpl.manager.team.tree</field>
         <field name="model">fpl.manager.team</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0">
-                <header>
-                    <button name="action_verify_team_data" type="object" string="Verify Team Data"/>
-                </header>
+            <list create="0" edit="0" delete="0" js_class="verify_manager_team_data_js">
                 <field name="name"/>
                 <field name="full_name"/>
                 <field name="first_name" invisible="1"/>

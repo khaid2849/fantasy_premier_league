@@ -1,6 +1,12 @@
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
+from .fpl_api_mixin import FPLApiMixin
+from ..services.fpl_api_client import FPLApiException
+import logging
 
-class FPLManagerTeam(models.Model):
+_logger = logging.getLogger(__name__)
+
+class FPLManagerTeam(models.Model, FPLApiMixin):
     _name = 'fpl.manager.team'
     _description = 'FPL Manager Team'
     
@@ -55,9 +61,133 @@ class FPLManagerTeam(models.Model):
     bank = fields.Float(string=_('In the Bank'))
     value = fields.Float(string=_('Squad Value'))
 
-    def action_verify_team_data(self):
-        self.ensure_one()
-        action_ref = 'fantasy_premier_league.fpl_manager_team_wizard_form'
-        action = self.env['ir.actions.act_window']._for_xml_id(action_ref)
-
-        return action
+    @api.model
+    def sync_manager_data(self, cookies, x_api_authorization, manager_id=None):
+        """Sync manager data from FPL API using authentication and create/update record"""
+        try:
+            # Get manager personal data first to extract manager_id
+            manager_data = self.with_context().sync_authenticated_data(
+                'get_manager_data', 
+                cookies, 
+                x_api_authorization
+            )
+            
+            if not manager_data:
+                raise UserError(_("No manager data received from API"))
+            
+            # Extract manager_id from API response
+            api_manager_id = None
+            if 'player' in manager_data and isinstance(manager_data['player'], dict):
+                api_manager_id = str(manager_data['player'].get('entry'))
+            elif 'entry' in manager_data:
+                api_manager_id = str(manager_data.get('entry'))
+            elif manager_id:
+                api_manager_id = str(manager_id)
+            
+            if not api_manager_id:
+                raise UserError(_("Could not extract manager_id from API response"))
+            
+            # Find or create manager team record
+            manager_team = self.search([('manager_id', '=', api_manager_id)], limit=1)
+            if not manager_team:
+                manager_team = self.create({'manager_id': api_manager_id})
+                _logger.info(f"Created new manager team record for ID: {api_manager_id}")
+            else:
+                _logger.info(f"Found existing manager team record for ID: {api_manager_id}")
+            
+            # Get manager entry summary
+            entry_summary = manager_team.sync_from_fpl_api(
+                'get_entry_summary', 
+                api_manager_id
+            )
+            
+            # Update model fields with API data
+            manager_team._update_from_manager_data(manager_data)
+            manager_team._update_from_entry_summary(entry_summary)
+            
+            _logger.info(f"Successfully synced data for manager {api_manager_id}")
+            return manager_team
+                
+        except FPLApiException as e:
+            _logger.error(f"Failed to sync manager data: {str(e)}")
+            raise UserError(f"Failed to sync manager data: {str(e)}")
+        except Exception as e:
+            _logger.error(f"Unexpected error during sync: {str(e)}")
+            raise UserError(f"Unexpected error during sync: {str(e)}")
+    
+    def _update_from_manager_data(self, data):
+        """Update model fields from manager data API response"""
+        if not data:
+            return
+            
+        update_vals = {
+            'first_name': data.get('first_name'),
+            'last_name': data.get('last_name'),
+            'full_name': f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+            'email': data.get('email'),
+            'gender': data.get('gender'),
+            '_id': str(data.get('id', '')),
+            'region': data.get('region'),
+            'entry_email': data.get('entry_email'),
+            'entry_language': data.get('entry_language'),
+        }
+        
+        # Remove None values
+        update_vals = {k: v for k, v in update_vals.items() if v is not None}
+        
+        if update_vals:
+            self.write(update_vals)
+    
+    def _update_from_entry_summary(self, data):
+        """Update model fields from entry summary API response"""
+        if not data:
+            return
+            
+        update_vals = {
+            'joined_time': data.get('joined_time'),
+            'started_event': data.get('started_event'),
+            'player_first_name': data.get('player_first_name'),
+            'player_last_name': data.get('player_last_name'),
+            'player_region_id': data.get('player_region_id'),
+            'player_region_name': data.get('player_region_name'),
+            'years_active': data.get('years_active'),
+            'summary_overall_points': data.get('summary_overall_points'),
+            'summary_overall_rank': data.get('summary_overall_rank'),
+            'summary_event_points': data.get('summary_event_points'),
+            'summary_event_rank': data.get('summary_event_rank'),
+            'current_event': data.get('current_event'),
+            'name': data.get('name'),
+            'name_change_blocked': data.get('name_change_blocked'),
+            'last_deadline_bank': data.get('last_deadline_bank'),
+            'last_deadline_value': data.get('last_deadline_value'),
+            'last_deadline_total_transfers': data.get('last_deadline_total_transfers'),
+        }
+        
+        # Remove None values
+        update_vals = {k: v for k, v in update_vals.items() if v is not None}
+        
+        if update_vals:
+            self.write(update_vals)
+    
+    # @api.model
+    # def sync_bootstrap_data(self):
+    #     """Sync basic FPL data (teams, players, events)"""
+    #     try:
+    #         data_service = self.get_data_service()
+    #         bootstrap_data = data_service.sync_bootstrap_data()
+    #
+    #         # Process teams
+    #         self._process_teams_data(bootstrap_data.get('teams', []))
+    #
+    #         # Process players
+    #         self._process_elements_data(bootstrap_data.get('elements', []))
+    #
+    #         # Process events (gameweeks)
+    #         self._process_events_data(bootstrap_data.get('events', []))
+    #
+    #         _logger.info("Successfully synced bootstrap data")
+    #         return True
+    #
+    #     except Exception as e:
+    #         _logger.error(f"Failed to sync bootstrap data: {str(e)}")
+    #         raise UserError(f"Failed to sync bootstrap data: {str(e)}")

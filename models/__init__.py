@@ -1,3 +1,4 @@
+from . import fpl_api_mixin
 from . import fpl_elements
 from . import fpl_manager_team
 from . import fpl_leagues

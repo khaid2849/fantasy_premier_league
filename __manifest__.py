@@ -18,11 +18,17 @@
 
         'views/fpl_manager_team_view.xml',
         'views/menu.xml',
-        
+
         'wizards/views/fpl_manager_team_wizard_view.xml'
     ],
     'demo': [],
     'installable': True,
     'application': True,
-    'assets': {},
+    'icon': '/fantasy_premier_league/static/description/icon.png',
+    'assets': {
+        'web.assets_backend': [
+            '/fantasy_premier_league/static/src/js/manager_team_list_button.js',
+            '/fantasy_premier_league/static/src/xml/manager_team_list_button.xml',
+        ]
+    },
 }

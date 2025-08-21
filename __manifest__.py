@@ -16,6 +16,8 @@
     'data': [
         'security/ir.model.access.csv',
 
+        'data/ir_cron.xml',
+
         'views/fpl_manager_team_view.xml',
         'views/fpl_teams_view.xml',
         'views/fpl_elements_view.xml',

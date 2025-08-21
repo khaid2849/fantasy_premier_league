@@ -9,4 +9,4 @@ class FPLPhases(models.Model):
     start_event = fields.Integer(string=_('Start Event'))
     stop_event = fields.Integer(string=_('Stop Event'))
     highest_score = fields.Integer(string=_('Highest Score'))
-    league_classic_id = fields.Many2one('fpl.league.classic', string=_('League Classic ID'))
+    league_id = fields.Many2one('fpl.leagues', string=_('League'))

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ir_cron_get_boostrap_static" model="ir.cron">
+        <field name="name">Cron Get Data from Boostrap Static API</field>
+        <field name="model_id" ref="fantasy_premier_league.model_fpl_import_data"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_get_data_boostrap_static()</field>
+        <field name="active">False</field>
+    </record>
+
+</odoo>

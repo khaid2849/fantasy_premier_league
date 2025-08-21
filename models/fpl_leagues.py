@@ -24,4 +24,4 @@ class FPLLeagues(models.Model):
     entry_percentile_rank = fields.Integer(string=_('Entry Percentile Rank'))
     entry_rank = fields.Integer(string=_('Entry Rank'))
     entry_last_rank = fields.Integer(string=_('Entry Last Rank'))
-    phase_ids = fields.One2many('fpl.phases', 'league_classic_id', string=_('Phases'))
+    phase_ids = fields.One2many('fpl.phases', 'league_id', string=_('Phases'))

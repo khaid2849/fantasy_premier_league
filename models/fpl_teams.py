@@ -28,10 +28,10 @@ class FPLTeams(models.Model):
     strength_defence_home = fields.Integer(string=_('Strength Defence Home'))
     strength_defence_away = fields.Integer(string=_('Strength Defence Away'))
     pulse_id = fields.Integer(string=_('Pulse ID'))
-    photo = fields.Binary(string=_('Photo'), _compute='_compute_team_photo')
+    photo = fields.Image(string=_('Photo'))
 
-    @api.depends('code')
-    def _compute_team_photo(self):
-        for rec in self:
-            team_photo_file = file_path('fantasy_premier_league', 'static/src/img/{code}.svg'.format(code=rec.code))
-            rec.photo = base64.b64encode(open(team_photo_file, 'rb').read()) if team_photo_file else False
+    # @api.depends('code')
+    # def _compute_team_photo(self):
+    #     for rec in self:
+    #         team_photo_file = file_path('fantasy_premier_league', 'static/src/img/{code}.svg'.format(code=rec.code))
+    #         rec.photo = base64.b64encode(open(team_photo_file, 'rb').read()) if team_photo_file else False

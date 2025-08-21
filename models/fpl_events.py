@@ -31,3 +31,4 @@ class FPLEvents(models.Model):
     most_captained = fields.Integer(string=_('Most Captained'))
     most_vice_captained = fields.Integer(string=_('Most Vice Captained'))
     chip_ids = fields.One2many('fpl.chips', 'event_id', string=_('Chip Plays'))
+    event_chip_plays_ids = fields.One2many('fpl.event.chip.plays', 'event_id', string=_('Event Chip Plays'))

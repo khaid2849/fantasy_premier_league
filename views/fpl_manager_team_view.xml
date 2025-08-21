@@ -99,7 +99,7 @@
         </field>
     </record>
 
-    <record id="fpl_manager_team_action" model="ir.actions.act_window">
+    <record id="fpl_manager_team_view_action" model="ir.actions.act_window">
         <field name="name">FPL Manager Team</field>
         <field name="res_model">fpl.manager.team</field>
         <field name="view_mode">list,form</field>

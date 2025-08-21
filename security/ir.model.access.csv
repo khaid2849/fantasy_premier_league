@@ -10,4 +10,5 @@ access_fpl_manager_team_user,access_fpl_manager_team_user,model_fpl_manager_team
 access_fpl_phases_user,access_fpl_phases_user,model_fpl_phases,base.group_user,1,1,1,1
 access_fpl_picks_user,access_fpl_picks_user,model_fpl_picks,base.group_user,1,1,1,1
 access_fpl_teams_user,access_fpl_teams_user,model_fpl_teams,base.group_user,1,1,1,1
+access_fpl_event_chip_plays_user,access_fpl_event_chip_plays_user,model_fpl_event_chip_plays,base.group_user,1,1,1,1
 access_fpl_manager_team_wizard,access_fpl_manager_team_wizard,model_fpl_manager_team_wizard,base.group_user,1,1,1,1

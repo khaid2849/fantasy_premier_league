@@ -31,7 +31,7 @@
         <field name="name">fpl.teams.form</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <form delete="0" create="0" edit="0">
+            <form delete="0" create="0">
                 <sheet>
                     <field name="photo" widget="image" class="oe_avatar"
                            options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
@@ -134,7 +134,7 @@
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="position asc">
-                <field name="position"/>
+                <field name="position" widget="handle"/>
                 <field name="photo" widget="image" options="{'size': [40, 40]}"/>
                 <field name="name"/>
                 <field name="short_name" optional="hide"/>

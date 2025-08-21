@@ -4,7 +4,7 @@ class FPLChips(models.Model):
     _name = 'fpl.chips'
     _description = 'FPL Chips'
 
-    _id = fields.Char(string=_('ID'))
+    chip_id = fields.Char(string=_('ID'))
     name = fields.Char(string=_('Name'))
     number = fields.Integer(string=_('Number'))
     start_event = fields.Integer(string=_('Start Event'))

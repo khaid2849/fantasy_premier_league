@@ -1,4 +1,7 @@
+import base64
+
 from odoo import models, fields, api, _
+from odoo.tools.misc import file_path
 
 class FPLTeams(models.Model):
     _name = 'fpl.teams'
@@ -17,6 +20,7 @@ class FPLTeams(models.Model):
     team_division = fields.Char(string=_('Team Division'))
     unavailable = fields.Boolean(string=_('Unavailable'))
     win = fields.Integer(string=_('Win'))
+    draw = fields.Integer(string=_('Draw'))
     strength_overall_home = fields.Integer(string=_('Strength Overall Home'))
     strength_overall_away = fields.Integer(string=_('Strength Overall Away'))
     strength_attack_home = fields.Integer(string=_('Strength Attack Home'))
@@ -24,3 +28,10 @@ class FPLTeams(models.Model):
     strength_defence_home = fields.Integer(string=_('Strength Defence Home'))
     strength_defence_away = fields.Integer(string=_('Strength Defence Away'))
     pulse_id = fields.Integer(string=_('Pulse ID'))
+    photo = fields.Binary(string=_('Photo'), _compute='_compute_team_photo')
+
+    @api.depends('code')
+    def _compute_team_photo(self):
+        for rec in self:
+            team_photo_file = file_path('fantasy_premier_league', 'static/src/img/{code}.svg'.format(code=rec.code))
+            rec.photo = base64.b64encode(open(team_photo_file, 'rb').read()) if team_photo_file else False

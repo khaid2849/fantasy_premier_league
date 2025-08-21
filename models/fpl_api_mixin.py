@@ -1,7 +1,3 @@
-"""
-FPL API Mixin for Odoo models to easily integrate with FPL API services
-"""
-
 from odoo import models, api
 from ..services.fpl_api_client import FPLApiClient, FPLDataService, FPLApiException
 import logging
@@ -9,8 +5,6 @@ import logging
 _logger = logging.getLogger(__name__)
 
 class FPLApiMixin(models.AbstractModel):
-    """Mixin class to add FPL API functionality to models"""
-    
     _name = 'fpl.api.mixin'
     _description = 'FPL API Mixin'
     

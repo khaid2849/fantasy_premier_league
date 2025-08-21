@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_elements_view_tree" model="ir.ui.view">
+        <field name="name">fpl.elements.tree</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" default_order="total_points desc">
+                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
+                <field name="web_name"/>
+                <field name="first_name" optional="hide"/>
+                <field name="second_name" optional="hide"/>
+                <field name="element_type"/>
+                <field name="fpl_team_id"/>
+                <field name="now_cost" widget="monetary" options="{'currency_field': false}"/>
+                <field name="total_points"/>
+                <field name="event_points" optional="show"/>
+                <field name="points_per_game" optional="show"/>
+                <field name="form" optional="show"/>
+                <field name="selected_by_percent" optional="show"/>
+                <field name="status" optional="show"/>
+                <field name="squad_number" optional="hide"/>
+                <field name="minutes" optional="hide"/>
+                <field name="goals_scored" optional="hide"/>
+                <field name="assists" optional="hide"/>
+                <field name="clean_sheets" optional="hide"/>
+                <field name="yellow_cards" optional="hide"/>
+                <field name="red_cards" optional="hide"/>
+                <field name="can_select" optional="hide"/>
+                <field name="can_transact" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_elements_view_kanban" model="ir.ui.view">
+        <field name="name">fpl.elements.kanban</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <kanban default_order="total_points desc">
+                <field name="photo"/>
+                <field name="web_name"/>
+                <field name="first_name"/>
+                <field name="second_name"/>
+                <field name="element_type"/>
+                <field name="fpl_team_id"/>
+                <field name="now_cost"/>
+                <field name="total_points"/>
+                <field name="event_points"/>
+                <field name="form"/>
+                <field name="selected_by_percent"/>
+                <field name="status"/>
+                <field name="squad_number"/>
+                <templates>
+                    <t t-name="card" class="flex-row">
+                        <aside class="o_kanban_aside_full">
+                            <field name="photo" widget="background_image"
+                                   options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'image_128'}"
+                                   class="d-block position-relative"/>
+                        </aside>
+                        <main class="ms-2">
+                            <div class="d-flex align-items-center">
+                                <field class="fw-bold fs-5 me-2" name="web_name"/>
+                                <span class="badge bg-primary">#
+                                    <field name="squad_number"/>
+                                </span>
+                            </div>
+                            <div class="text-muted">
+                                <field name="first_name"/>
+                                <field name="second_name"/>
+                            </div>
+                            <div class="d-flex mt-2">
+                                <span class="badge bg-secondary me-2">
+                                    <field name="element_type"/>
+                                </span>
+                                <span class="badge bg-info">
+                                    <field name="fpl_team_id"/>
+                                </span>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Cost</small>
+                                    <div class="fw-bold">£
+                                        <field name="now_cost"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Total Pts</small>
+                                    <div class="fw-bold">
+                                        <field name="total_points"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Form</small>
+                                    <div>
+                                        <field name="form"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Selected</small>
+                                    <div><field name="selected_by_percent"/>%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <field name="status" widget="badge"
+                                       decoration-success="status == 'a'"
+                                       decoration-warning="status == 'd'"
+                                       decoration-danger="status == 'i'"/>
+                            </div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="fpl_elements_view_form" model="ir.ui.view">
+        <field name="name">fpl.elements.form</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <form delete="0" create="0" edit="0">
+                <header>
+                    <field name="status" widget="statusbar" statusbar_visible="a,d,i"/>
+                </header>
+                <sheet>
+                    <field name="photo" widget="image" class="oe_avatar"
+                           options="{'preview_image': 'photo', 'size': [128, 128]}"/>
+                    <div class="oe_title mb24">
+                        <h1>
+                            <field name="web_name" class="text-break" default_focus="1"/>
+                        </h1>
+                        <div class="o_row">
+                            <field name="first_name"/>
+                            <field name="second_name"/>
+                        </div>
+                        <div class="o_row mt-2">
+                            <field name="element_type" class="me-3"/>
+                            <field name="fpl_team_id" class="me-3"/>
+                            <span class="badge bg-primary">#
+                                <field name="squad_number"/>
+                            </span>
+                        </div>
+                    </div>
+
+                    <group string="Basic Information">
+                        <group>
+                            <field name="element_id"/>
+                            <field name="code"/>
+                            <field name="birth_date"/>
+                            <field name="team_join_date"/>
+                            <field name="region"/>
+                        </group>
+                        <group>
+                            <field name="now_cost" widget="monetary" options="{'currency_field': false}"/>
+                            <field name="selected_by_percent"/>
+                            <field name="can_select"/>
+                            <field name="can_transact"/>
+                            <field name="special"/>
+                        </group>
+                    </group>
+
+                    <group string="Performance Statistics">
+                        <group>
+                            <field name="total_points"/>
+                            <field name="event_points"/>
+                            <field name="points_per_game"/>
+                            <field name="form"/>
+                            <field name="dreamteam_count"/>
+                            <field name="in_dreamteam"/>
+                        </group>
+                        <group>
+                            <field name="minutes"/>
+                            <field name="starts"/>
+                            <field name="goals_scored"/>
+                            <field name="assists"/>
+                            <field name="clean_sheets"/>
+                            <field name="goals_conceded"/>
+                        </group>
+                    </group>
+
+                    <group string="Disciplinary">
+                        <group>
+                            <field name="yellow_cards"/>
+                            <field name="red_cards"/>
+                            <field name="own_goals"/>
+                        </group>
+                        <group>
+                            <field name="penalties_saved"/>
+                            <field name="penalties_missed"/>
+                            <field name="saves"/>
+                        </group>
+                    </group>
+
+                    <group string="Advanced Stats">
+                        <group>
+                            <field name="bonus"/>
+                            <field name="bps"/>
+                            <field name="influence"/>
+                            <field name="creativity"/>
+                            <field name="threat"/>
+                            <field name="ict_index"/>
+                        </group>
+                        <group>
+                            <field name="expected_goals"/>
+                            <field name="expected_assists"/>
+                            <field name="expected_goal_involvements"/>
+                            <field name="expected_goals_conceded"/>
+                        </group>
+                    </group>
+
+                    <group string="Defensive Stats" attrs="{'invisible': [('element_type', '!=', 1)]}">
+                        <group>
+                            <field name="tackles"/>
+                            <field name="recoveries"/>
+                            <field name="clearances_blocks_interceptions"/>
+                            <field name="defensive_contribution"/>
+                        </group>
+                    </group>
+
+                    <group string="Cost Changes">
+                        <group>
+                            <field name="cost_change_event"/>
+                            <field name="cost_change_event_fall"/>
+                        </group>
+                        <group>
+                            <field name="cost_change_start"/>
+                            <field name="cost_change_start_fall"/>
+                        </group>
+                    </group>
+
+                    <group string="Transfer Information">
+                        <group>
+                            <field name="transfers_in"/>
+                            <field name="transfers_in_event"/>
+                        </group>
+                        <group>
+                            <field name="transfers_out"/>
+                            <field name="transfers_out_event"/>
+                        </group>
+                    </group>
+
+                    <group string="Set Pieces">
+                        <group>
+                            <field name="corners_and_indirect_freekicks_order"/>
+                            <field name="corners_and_indirect_freekicks_text"/>
+                            <field name="direct_freekicks_order"/>
+                            <field name="direct_freekicks_text"/>
+                        </group>
+                        <group>
+                            <field name="penalties_order"/>
+                            <field name="penalties_text"/>
+                        </group>
+                    </group>
+
+                    <group string="Per 90 Minutes Stats">
+                        <group>
+                            <field name="expected_goals_per_90"/>
+                            <field name="expected_assists_per_90"/>
+                            <field name="expected_goal_involvements_per_90"/>
+                            <field name="starts_per_90"/>
+                        </group>
+                        <group>
+                            <field name="saves_per_90"/>
+                            <field name="expected_goals_conceded_per_90"/>
+                            <field name="goals_conceded_per_90"/>
+                            <field name="clean_sheets_per_90"/>
+                            <field name="defensive_contribution_per_90"/>
+                        </group>
+                    </group>
+
+                    <group string="Rankings">
+                        <group>
+                            <field name="influence_rank"/>
+                            <field name="influence_rank_type"/>
+                            <field name="creativity_rank"/>
+                            <field name="creativity_rank_type"/>
+                            <field name="threat_rank"/>
+                            <field name="threat_rank_type"/>
+                        </group>
+                        <group>
+                            <field name="ict_index_rank"/>
+                            <field name="ict_index_rank_type"/>
+                            <field name="now_cost_rank"/>
+                            <field name="now_cost_rank_type"/>
+                            <field name="form_rank"/>
+                            <field name="form_rank_type"/>
+                        </group>
+                    </group>
+
+                    <group string="Availability">
+                        <group>
+                            <field name="chance_of_playing_this_round"/>
+                            <field name="chance_of_playing_next_round"/>
+                        </group>
+                        <group>
+                            <field name="ep_this"/>
+                            <field name="ep_next"/>
+                        </group>
+                    </group>
+
+                    <group string="Additional Information">
+                        <group>
+                            <field name="news"/>
+                            <field name="news_added"/>
+                            <field name="value_form"/>
+                            <field name="value_season"/>
+                        </group>
+                        <group>
+                            <field name="opta_code"/>
+                            <field name="has_temporary_code"/>
+                            <field name="removed"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="fpl_elements_view_search" model="ir.ui.view">
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <search string="Filters">
+                <field name="web_name"/>
+                <field name="first_name"/>
+                <field name="second_name"/>
+                <separator string="Price"/>
+                <filter string="14.5" name="now_cost" domain="[('now_cost', '<=', 14.5)]"/>
+                <filter string="14.0" name="now_cost" domain="[('now_cost', '<=', 14.0)]"/>
+                <filter string="13.5" name="now_cost" domain="[('now_cost', '<=', 13.5)]"/>
+                <filter string="13.0" name="now_cost" domain="[('now_cost', '<=', 13.0)]"/>
+                <filter string="12.5" name="now_cost" domain="[('now_cost', '<=', 12.5)]"/>
+                <filter string="12.0" name="now_cost" domain="[('now_cost', '<=', 12.0)]"/>
+                <filter string="11.5" name="now_cost" domain="[('now_cost', '<=', 11.5)]"/>
+                <filter string="11.0" name="now_cost" domain="[('now_cost', '<=', 11.0)]"/>
+                <filter string="10.5" name="now_cost" domain="[('now_cost', '<=', 10.5)]"/>
+                <filter string="10.0" name="now_cost" domain="[('now_cost', '<=', 10.0)]"/>
+                <filter string="9.5" name="now_cost" domain="[('now_cost', '<=', 9.5)]"/>
+                <filter string="9.0" name="now_cost" domain="[('now_cost', '<=', 9.0)]"/>
+                <filter string="8.5" name="now_cost" domain="[('now_cost', '<=', 8.5)]"/>
+                <filter string="8.0" name="now_cost" domain="[('now_cost', '<=', 8.0)]"/>
+                <filter string="7.5" name="now_cost" domain="[('now_cost', '<=', 7.5)]"/>
+                <filter string="7.0" name="now_cost" domain="[('now_cost', '<=', 7.0)]"/>
+                <filter string="6.5" name="now_cost" domain="[('now_cost', '<=', 6.5)]"/>
+                <filter string="6.0" name="now_cost" domain="[('now_cost', '<=', 6.0)]"/>
+                <filter string="5.5" name="now_cost" domain="[('now_cost', '<=', 5.5)]"/>
+                <filter string="5.0" name="now_cost" domain="[('now_cost', '<=', 5.0)]"/>
+                <filter string="4.5" name="now_cost" domain="[('now_cost', '<=', 4.5)]"/>
+                <filter string="4.0" name="now_cost" domain="[('now_cost', '<=', 4.0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Team" name="fpl_team_id" domain="[]" context="{'group_by':'fpl_team_id'}"/>
+                    <filter string="Position" name="element_type" domain="[]" context="{'group_by':'element_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="fpl_elements_view_action" model="ir.actions.act_window">
+        <field name="name">FPL Elements</field>
+        <field name="res_model">fpl.elements</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+</odoo>

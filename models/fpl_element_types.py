@@ -4,7 +4,7 @@ class FPLElementTypes(models.Model):
     _name = 'fpl.element.types'
     _description = 'FPL Element Types'
 
-    _id = fields.Char(string=_('ID'))
+    element_type_id = fields.Char(string=_('Element Type ID'))
     plural_name = fields.Char(string=_('Plural Name'))
     plural_name_short = fields.Char(string=_('Plural Name Short'))
     singular_name = fields.Char(string=_('Singular Name'))

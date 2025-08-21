@@ -20,7 +20,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     full_name = fields.Char(string=_('Full Name'))
     email = fields.Char(string=_('Email'))
     gender = fields.Selection([('M', _('Male')), ('F', _('Female') )], string=_('Gender'))
-    _id = fields.Char(string=_('ID'))
+    manger_data_id = fields.Integer(string=_('ID'))
     region = fields.Char(string=_('Region'))
     entry_email = fields.Char(string=_('Entry Email'))
     entry_language = fields.Char(string=_('Entry Language'))

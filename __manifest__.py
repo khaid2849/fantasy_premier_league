@@ -17,6 +17,8 @@
         'security/ir.model.access.csv',
 
         'views/fpl_manager_team_view.xml',
+        'views/fpl_teams_view.xml',
+        'views/fpl_elements_view.xml',
         'views/menu.xml',
 
         'wizards/views/fpl_manager_team_wizard_view.xml'

@@ -13,5 +13,5 @@ class FPLManagerChips(models.Model):
     stop_event = fields.Integer(string=_('Stop Event'), related='chip_id.stop_event')
     chip_type = fields.Char(string=_('Chip Type'), related='chip_id.chip_type')
     is_pending = fields.Boolean(string=_('Is Pending'))
-    _id = fields.Char(string=_('ID'), related='chip_id._id')
+    fpl_chip_id = fields.Char(string=_('ID'), related='chip_id.chip_id')
     manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))

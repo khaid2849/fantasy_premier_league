@@ -4,7 +4,7 @@ class FPLElements(models.Model):
     _name = 'fpl.elements'
     _description = 'FPL Elements'
 
-    player_id = fields.Integer(string=_('Player ID'))
+    element_id = fields.Integer(string=_('Element ID'))
     fpl_team_id = fields.Many2one('fpl.teams', string=_('FPL Team'))
     team_id = fields.Integer(string=_('Team ID'), related='fpl_team_id.team_id')
     team_code = fields.Char(string=_('Team Code'), related='fpl_team_id.code')
@@ -18,7 +18,7 @@ class FPLElements(models.Model):
     cost_change_start = fields.Float(string=_('Cost Change Start'))
     cost_change_start_fall = fields.Float(string=_('Cost Change Start Fall'))
     dreamteam_count = fields.Integer(string=_('Dreamteam Count'))
-    element_type = fields.Many2one('fpl.element.types', string=_('Element Type'))
+    element_type_id = fields.Many2one('fpl.element.types', string=_('Element Type'))
     ep_next = fields.Char(string=_('EP Next'))
     ep_this = fields.Char(string=_('EP This'))
     event_points = fields.Float(string=_('Event Points'))

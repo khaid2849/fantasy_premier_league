@@ -4,9 +4,9 @@ class FPLLeagues(models.Model):
     _name = 'fpl.leagues'
     _description = 'FPL Leagues'
 
-    league_type = fields.Selection([('classic', _('Classic')), ('h2h', _('H2H'))], string=_('League Type'))
+    type = fields.Selection([('classic', _('Classic')), ('h2h', _('H2H'))], string=_('League Type'))
     manager_id = fields.Many2one('fpl.manager.team', string=_('Manager ID'))
-    _id = fields.Char(string=_('ID'))
+    league_id = fields.Integer(string=_('League ID'))
     name = fields.Char(string=_('Name'))
     short_name = fields.Char(string=_('Short Name'))
     created = fields.Datetime(string=_('Created'))

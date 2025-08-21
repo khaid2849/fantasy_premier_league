@@ -4,10 +4,10 @@ class FPLEvents(models.Model):
     _name = 'fpl.events'
     _description = 'FPL Events'
 
-    _id = fields.Char(string=_('ID'))
+    event_id = fields.Integer(string=_('ID'))
     name = fields.Char(string=_('Name'))
     deadline_time = fields.Datetime(string=_('Deadline Time'))
-    realease_time = fields.Datetime(string=_('Release Time'))
+    release_time = fields.Datetime(string=_('Release Time'))
     average_entry_score = fields.Float(string=_('Average Entry Score'))
     finished = fields.Boolean(string=_('Finished'))
     data_checked = fields.Boolean(string=_('Data Checked'))

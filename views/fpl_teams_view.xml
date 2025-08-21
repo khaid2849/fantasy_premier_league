@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_teams_view_tree" model="ir.ui.view">
+        <field name="name">fpl.teams.tree</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" default_order="name asc">
+                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
+                <field name="name"/>
+                <field name="short_name" optional="show"/>
+                <field name="code" optional="show"/>
+                <field name="form" optional="hide"/>
+                <field name="win" optional="show"/>
+                <field name="loss" optional="show"/>
+                <field name="draw" optional="show"/>
+                <field name="points" optional="show"/>
+                <field name="strength" optional="hide"/>
+                <field name="played" optional="hide"/>
+                <field name="position" optional="hide"/>
+                <field name="strength_overall_home" optional="hide"/>
+                <field name="strength_overall_away" optional="hide"/>
+                <field name="strength_attack_home" optional="hide"/>
+                <field name="strength_attack_away" optional="hide"/>
+                <field name="strength_defence_home" optional="hide"/>
+                <field name="strength_defence_away" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_teams_view_form" model="ir.ui.view">
+        <field name="name">fpl.teams.form</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <form delete="0" create="0" edit="0">
+                <sheet>
+                    <field name="photo" widget="image" class="oe_avatar"
+                           options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
+                    <div class="oe_title mb24">
+                        <h1>
+                            <field widget="text" class="text-break" name="name" default_focus="1"/>
+                        </h1>
+                        <div class="o_row">
+                            <field name="short_name"/>
+                        </div>
+                    </div>
+                    <group string="Team League Info">
+                        <group>
+                            <field name="win"/>
+                            <field name="loss"/>
+                            <field name="draw"/>
+                            <field name="points"/>
+                        </group>
+                        <group>
+                            <field name="played"/>
+                            <field name="position"/>
+                            <field name="strength"/>
+                        </group>
+                    </group>
+
+                    <group string="Strength Overall Info">
+                        <field name="strength_overall_home"/>
+                        <field name="strength_overall_away"/>
+                    </group>
+
+                    <group string="Strength Attack Info">
+                        <field name="strength_attack_home"/>
+                        <field name="strength_attack_away"/>
+                    </group>
+
+                    <group string="Strength Defence Info">
+                        <field name="strength_defence_home"/>
+                        <field name="strength_defence_away"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="fpl_teams_view_kanban" model="ir.ui.view">
+        <field name="name">fpl.teams.kanban</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="photo"/>
+                <templates>
+                    <t t-name="card" class="flex-row">
+                        <aside class="o_kanban_aside_full">
+                            <field name="photo" widget="background_image"
+                                   options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'image_128'}"
+                                   class="d-block position-relative"/>
+                        </aside>
+                        <main class="ms-2">
+                            <div>
+                                <field class="fw-bold fs-5" name="name"/>
+                            </div>
+                            <field name="short_name"/>
+                            <field name="code"/>
+                            <div class="o_text_overflow">
+                                <p>W</p>
+                                <field name="win"/>
+                            </div>
+                            <div class="o_text_overflow">
+                                <p>L</p>
+                                <field name="loss"/>
+                            </div>
+                            <div class="o_text_overflow">
+                                <p>D</p>
+                                <field name="draw"/>
+                            </div>
+                            <div class="o_text_overflow">
+                                <p>P</p>
+                                <field name="points"/>
+                            </div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="fpl_teams_view_search" model="ir.ui.view">
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <search string="Filters">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="short_name"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="fpl_teams_table_view_tree" model="ir.ui.view">
+        <field name="name">fpl.teams.tree</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" default_order="position asc">
+                <field name="position"/>
+                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
+                <field name="name"/>
+                <field name="short_name" optional="hide"/>
+                <field name="code" optional="hide"/>
+                <field name="win" optional="show"/>
+                <field name="loss" optional="show"/>
+                <field name="draw" optional="show"/>
+                <field name="points" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_teams_view_action" model="ir.actions.act_window">
+        <field name="name">FPL Teams</field>
+        <field name="res_model">fpl.teams</field>
+        <field name="search_view_id" ref="fantasy_premier_league.fpl_teams_view_search"/>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <record id="fpl_table_view_action" model="ir.actions.act_window">
+        <field name="name">Table</field>
+        <field name="res_model">fpl.teams</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="fantasy_premier_league.fpl_teams_table_view_tree"/>
+    </record>
+</odoo>

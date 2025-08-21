@@ -4,7 +4,7 @@ class FPLPhases(models.Model):
     _name = 'fpl.phases'
     _description = 'FPL Phases'
 
-    _id = fields.Char(string=_('ID'))
+    phase_id = fields.Integer(string=_('ID'))
     name = fields.Char(string=_('Name'))
     start_event = fields.Integer(string=_('Start Event'))
     stop_event = fields.Integer(string=_('Stop Event'))

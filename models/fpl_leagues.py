@@ -20,8 +20,19 @@ class FPLLeagues(models.Model):
     entry_can_admin = fields.Boolean(string=_('Entry Can Admin'))
     entry_can_invite = fields.Boolean(string=_('Entry Can Invite'))
     has_cup = fields.Boolean(string=_('Has Cup'))
+    cup_league = fields.Boolean(string=_('Cup League'))
+    cup_qualified = fields.Boolean(string=_('Cup Qualified'))
     rank_count = fields.Integer(string=_('Rank Count'))
     entry_percentile_rank = fields.Integer(string=_('Entry Percentile Rank'))
     entry_rank = fields.Integer(string=_('Entry Rank'))
     entry_last_rank = fields.Integer(string=_('Entry Last Rank'))
-    phase_ids = fields.One2many('fpl.phases', 'league_id', string=_('Phases'))
+    active_phases_ids = fields.One2many('fpl.league.active.phases', 'league_id', string=_('Active Phases'))
+    overall_points = fields.Integer(string=_('Overall Points'), compute='_compute_overall_points')
+
+    @api.depends('active_phases_ids')
+    def _compute_overall_points(self):
+        for league in self:
+            if league.active_phases_ids:
+                league.overall_points = league.active_phases_ids.search([('phase_id', '=', 1)], limit=1).total
+            else:
+                league.overall_points = 0

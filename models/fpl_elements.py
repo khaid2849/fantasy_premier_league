@@ -19,6 +19,7 @@ class FPLElements(models.Model):
     cost_change_start_fall = fields.Float(string=_('Cost Change Start Fall'))
     dreamteam_count = fields.Integer(string=_('Dreamteam Count'))
     element_type_id = fields.Many2one('fpl.element.types', string=_('Element Type'))
+    plural_name = fields.Char(string=_('Plural Name'), related='element_type_id.plural_name')
     ep_next = fields.Char(string=_('EP Next'))
     ep_this = fields.Char(string=_('EP This'))
     event_points = fields.Float(string=_('Event Points'))
@@ -35,7 +36,15 @@ class FPLElements(models.Model):
     selected_by_percent = fields.Char(string=_('Selected By Percent'))
     special = fields.Boolean(string=_('Special'))
     squad_number = fields.Char(string=_('Squad Number'))
-    status = fields.Char(string=_('Status'))
+    status = fields.Selection(
+        [
+            ('a', _('Available')), 
+            ('u', _('Unavailable')),
+            ('s', _('Suspended')),
+            ('d', _('Doubtful')),
+            ('i', _('Injured')),
+            ('n', _('Not Available'))
+        ], string=_('Status'))
     total_points = fields.Float(string=_('Total Points'))
     transfers_in = fields.Float(string=_('Transfers In'))
     transfers_in_event = fields.Float(string=_('Transfers In Event'))
@@ -44,6 +53,7 @@ class FPLElements(models.Model):
     value_form = fields.Char(string=_('Value Form'))
     value_season = fields.Char(string=_('Value Season'))
     web_name = fields.Char(string=_('Web Name'))
+    country_id = fields.Many2one('res.country', string=_('Country'))
     region = fields.Char(string=_('Region'))
     team_join_date = fields.Date(string=_('Team Join Date'))
     birth_date = fields.Date(string=_('Birth Date'))
@@ -106,6 +116,11 @@ class FPLElements(models.Model):
     starts_per_90 = fields.Float(string=_('Starts Per 90'))
     clean_sheets_per_90 = fields.Float(string=_('Clean Sheets Per 90'))
     defensive_contribution_per_90 = fields.Float(string=_('Defensive Contribution Per 90'))
-    
+    currency_id = fields.Many2one('res.currency', string=_('Currency'))
+    display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
 
+    @api.depends('first_name', 'second_name')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = f"{rec.first_name} {rec.second_name}"
            

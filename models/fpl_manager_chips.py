@@ -4,7 +4,7 @@ class FPLManagerChips(models.Model):
     _name = 'fpl.manager.chips'
     _description = 'FPL Manager Chips'
 
-    status_for_entry = fields.Char(string=_('Status for Entry'))
+    status_for_entry = fields.Selection([('available', _('Available')), ('used', _('Used'))], string=_('Status for Entry'))
     played_by_entry = fields.Char(string=_('Played by Entry'))
     chip_id = fields.Many2one('fpl.chips', string=_('Chip'))
     number = fields.Integer(string=_('Number'), related='chip_id.number')
@@ -15,3 +15,4 @@ class FPLManagerChips(models.Model):
     is_pending = fields.Boolean(string=_('Is Pending'))
     fpl_chip_id = fields.Char(string=_('ID'), related='chip_id.chip_id')
     manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))
+    show_name = fields.Selection(related='chip_id.show_name')

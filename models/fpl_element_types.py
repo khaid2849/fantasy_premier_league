@@ -16,4 +16,9 @@ class FPLElementTypes(models.Model):
     squad_max_play = fields.Integer(string=_('Squad Max Play'))
     ui_shirt_specific = fields.Boolean(string=_('UI Shirt Specific'))
     element_count = fields.Integer(string=_('Element Count'))
+    display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
     
+    @api.depends('singular_name_short')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = rec.singular_name_short

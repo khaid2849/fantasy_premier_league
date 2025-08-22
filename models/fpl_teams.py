@@ -28,6 +28,7 @@ class FPLTeams(models.Model):
     strength_defence_home = fields.Integer(string=_('Strength Defence Home'))
     strength_defence_away = fields.Integer(string=_('Strength Defence Away'))
     pulse_id = fields.Integer(string=_('Pulse ID'))
+    element_ids = fields.One2many('fpl.elements', 'fpl_team_id', string=_('Elements'))
     photo = fields.Image(string=_('Photo'))
 
     # @api.depends('code')

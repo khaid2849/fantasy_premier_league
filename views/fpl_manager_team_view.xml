@@ -7,10 +7,11 @@
             <list create="0" edit="0" delete="0" js_class="verify_manager_team_data_js">
                 <field name="name"/>
                 <field name="full_name"/>
-                <field name="first_name" invisible="1"/>
-                <field name="last_name" invisible="1"/>
-                <field name="manager_id"/>
-                <field name="email" optional="show"/>
+                <field name="first_name" column_invisible="1"/>
+                <field name="last_name" column_invisible="1"/>
+                <field name="summary_overall_points" optional="show"/>
+                <field name="summary_event_points" optional="show"/>
+                <field name="summary_event_rank" optional="show"/>
             </list>
         </field>
     </record>
@@ -19,28 +20,48 @@
         <field name="name">fpl.manager.team.form</field>
         <field name="model">fpl.manager.team</field>
         <field name="arch" type="xml">
-            <form string="FPL Manager Team Wizard" delete="0" create="0" edit="0">
+            <form string="Manager Team" delete="0" create="0" edit="0">
                 <sheet>
-                    <!-- <field name="image_1920" widget="image" class="oe_avatar" options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/> -->
+                    <!-- <div class="oe_button_box" name="button_box">
+                        <button type="object"
+                                name="action_open_chip_bench_boost"
+                                invisible="not used_bench_boost"
+                                class="oe_stat_button" icon="fa-cubes">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">
+                                    <field name="status_for_entry" nolabel="1" class="oe_inline"/>
+                                </span>
+                                <span class="o_stat_text">Bench Boost</span>
+                            </div>
+                        </button>
+                    </div> -->
                     <div class="oe_title mb24">
                         <h1>
-                            <field widget="text" class="text-break" name="name" default_focus="1"/>
+                            <field name="name" class="text-break" default_focus="1"/>
+                            <field name="manager_id" class="text-muted fst-italic"/>
                         </h1>
-                        <div class="o_row">
+                        <div class="o_row me-3">
                             <field name="full_name"/>
                         </div>
+                        <div class="o_row mt-2">
+                            <field name="country_id" options="{'no_open': True}"/>
+                        </div>
                     </div>
+
                     <group string="Personal Info">
                         <group>
-                            <field name="full_name"/>
                             <field name="email"/>
-                        </group>
-                        <group>
                             <field name="date_of_birth"/>
                             <field name="gender"/>
                         </group>
+                        <group>
+                            <field name="joined_time"/>
+                            <field name="favourite_team" options="{'no_create': True}"/>
+                            <field name="years_active"/>
+                        </group>
                     </group>
-                    <!-- <group string="Points & Rankings">
+                    
+                    <group string="Points &amp; Rankings">
                         <group>
                             <field name="summary_overall_points"/>
                             <field name="summary_overall_rank"/>
@@ -50,6 +71,7 @@
                             <field name="summary_event_rank"/>
                         </group>
                     </group>
+                    
                     <group string="Transfer Info">
                         <group>
                             <field name="limit"/>
@@ -59,41 +81,66 @@
                             <field name="bank"/>
                             <field name="value"/>
                         </group>
-                    </group> -->
+                    </group>
 
                     <notebook>
                         <page string="Picks">
                             <field name="pick_ids" nolabel="1">
                                 <list>
-                                    <field name="element_id"/>
-                                    <field name="position"/>
-                                    <field name="team"/>
+                                    <field name="element_id" column_invisible="1"/>
+                                    <field name="web_name" string="Name"/>
+                                    <field name="team_id"/>
+                                    <field name="element_type_id" string="Position"/> 
+                                    <field name="position" optional="hide"/>
                                     <field name="is_captain"/>
                                     <field name="is_vice_captain"/>
-                                    <field name="element_type"/>
-                                    <field name="selling_price"/>
-                                    <field name="purchase_price"/>
+                                    <field name="selling_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="purchase_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="currency_id" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
                         
-                        <page string="Leagues">
-                            <field name="league_ids" nolabel="1">
-                                <list>
-                                    <field name="name"/>
-                                </list>
-                            </field>
-                        </page>
 
                         <page string="Chips">
-                            <field name="manager_chips" nolabel="1">
+                            <field name="manager_chip_ids" nolabel="1">
                                 <list>
-                                    <field name="chip_id"/>
-                                    <field name="status_for_entry"/>
+                                    <field name="chip_id" column_invisible="1"/>
+                                    <field name="show_name"/>
+                                    <field name="is_pending" string="Pending"/>
+                                    <field name="status_for_entry" widget="badge"
+                                        decoration-success="status_for_entry == 'available'"
+                                        decoration-danger="status_for_entry == 'used'"
+                                    />
                                 </list>
                             </field>
                         </page>
                     </notebook>
+
+                    <separator/>
+
+                    <group string="Leagues">
+                    <notebook> 
+                        <page string="Classic">
+                            <field name="league_classic_ids" nolabel="1" domain="[('type', '=', 'classic')]">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="entry_rank"/>
+                                    <field name="overall_points"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="H2H"> 
+                            <field name="league_h2h_ids" nolabel="1" domain="[('type', '=', 'h2h')]">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="entry_rank"/>
+                                </list>
+                                </field>
+                            </page> 
+                        </notebook>
+                    </group>
+
                 </sheet>
             </form>
         </field>

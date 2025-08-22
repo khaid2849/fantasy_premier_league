@@ -11,3 +11,12 @@ class FPLChips(models.Model):
     stop_event = fields.Integer(string=_('Stop Event'))
     chip_type = fields.Char(string=_('Chip Type'))
     event_id = fields.Many2one('fpl.events', string=_('Event ID'))
+    show_name = fields.Selection(
+        [('wildcard', _('Wildcard')), ('freehit', _('Free Hit')), ('bboost', _('Bench Boost')), ('3xc', _('Triple Captain'))],
+        compute='_compute_show_name'
+    )
+
+    @api.depends('name')
+    def _compute_show_name(self):
+        for chip in self:
+            chip.show_name = chip.name

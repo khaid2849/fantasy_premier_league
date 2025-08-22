@@ -4,7 +4,7 @@
         <field name="name">fpl.teams.tree</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0" default_order="name asc">
+            <list create="0" edit="0" delete="0" default_order="name asc" string="Teams">
                 <field name="photo" widget="image" options="{'size': [40, 40]}"/>
                 <field name="name"/>
                 <field name="short_name" optional="show"/>
@@ -31,10 +31,10 @@
         <field name="name">fpl.teams.form</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <form delete="0" create="0">
+            <form string="Team" create="0" edit="0" delete="0">
                 <sheet>
                     <field name="photo" widget="image" class="oe_avatar"
-                           options="{&quot;preview_image&quot;: &quot;avatar_128&quot;}"/>
+                           options="{&quot;preview_image&quot;: &quot;photo&quot;}"/>
                     <div class="oe_title mb24">
                         <h1>
                             <field widget="text" class="text-break" name="name" default_focus="1"/>
@@ -57,20 +57,66 @@
                         </group>
                     </group>
 
-                    <group string="Strength Overall Info">
-                        <field name="strength_overall_home"/>
-                        <field name="strength_overall_away"/>
-                    </group>
+                    <notebook>
+                        <page string="Strength Overall Info">
+                            <group string="Strength Overall Info">
+                                <field name="strength_overall_home"/>
+                                <field name="strength_overall_away"/>
+                            </group>
+                        </page>
 
-                    <group string="Strength Attack Info">
-                        <field name="strength_attack_home"/>
-                        <field name="strength_attack_away"/>
-                    </group>
+                        <page string="Strength Attack Info">
+                            <group string="Strength Attack Info">
+                                <field name="strength_attack_home"/>
+                                <field name="strength_attack_away"/>
+                            </group>
+                        </page>
 
-                    <group string="Strength Defence Info">
-                        <field name="strength_defence_home"/>
-                        <field name="strength_defence_away"/>
-                    </group>
+                        <page string="Strength Defence Info">
+                            <group string="Strength Defence Info">
+                                <field name="strength_defence_home"/>
+                                <field name="strength_defence_away"/>
+                            </group>
+                        </page>
+                    </notebook>
+                    
+
+                   <notebook>
+                        <page string="Players">
+                            <field name="element_ids" widget="one2many" options="{'no_create': True, 'no_create_edit': True}">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="photo" widget="image" options="{'size': [40, 40]}" string=""/>
+                                    <field name="element_type_id" optional="show" string="Position"/>
+                                    <field name="web_name" string="Name"/>
+                                    <field name="first_name" optional="hide"/>
+                                    <field name="second_name" optional="hide"/>
+                                    <field name="now_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="total_points"/>
+                                    <field name="event_points" optional="show"/>
+                                    <field name="points_per_game" optional="show"/>
+                                    <field name="form" optional="show"/>
+                                    <field name="selected_by_percent" optional="show" string="Selected By Percent (%)"/>
+                                    <field name="squad_number" optional="hide"/>
+                                    <field name="minutes" optional="hide"/>
+                                    <field name="goals_scored" optional="hide"/>
+                                    <field name="assists" optional="hide"/>
+                                    <field name="clean_sheets" optional="hide"/>
+                                    <field name="yellow_cards" optional="hide"/>
+                                    <field name="red_cards" optional="hide"/>
+                                    <field name="can_select" optional="hide"/>
+                                    <field name="can_transact" optional="hide"/>
+                                    <field name="status" optional="show" widget="badge" 
+                                            decoration-success="status == 'a'" 
+                                            decoration-muted="status == 'd'" 
+                                            decoration-warning="status == 'i'"
+                                            decoration-info="status == 's'"
+                                            decoration-danger="status == 'n'"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                   </notebook>
+
                 </sheet>
             </form>
         </field>
@@ -80,38 +126,81 @@
         <field name="name">fpl.teams.kanban</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <kanban>
+            <kanban create="0" edit="0" delete="0" class="o_kanban_dashboard" string="Teams">
                 <field name="photo"/>
+                <field name="name"/>
+                <field name="short_name"/>
+                <field name="code"/>
+                <field name="win"/>
+                <field name="loss"/>
+                <field name="draw"/>
+                <field name="points"/>
+                <field name="position"/>
+                <field name="strength"/>
                 <templates>
-                    <t t-name="card" class="flex-row">
-                        <aside class="o_kanban_aside_full">
-                            <field name="photo" widget="background_image"
-                                   options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'image_128'}"
-                                   class="d-block position-relative"/>
-                        </aside>
-                        <main class="ms-2">
-                            <div>
-                                <field class="fw-bold fs-5" name="name"/>
+                    <t t-name="card" class="o_kanban_record oe_kanban_global_click">
+                        <div class="o_kanban_card_header">
+                            <div class="o_kanban_card_header_title">
+                                <div class="o_field_image" style="width: 60px; height: 60px; margin-right: 10px; float: left;">
+                                    <field name="photo" widget="image" options="{'size': [60, 60]}" style="border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"/>
+                                </div>
+                                <div class="o_kanban_primary_left">
+                                    <div class="o_primary">
+                                        <field name="name" class="fw-bold text-primary" style="font-size: 16px;"/>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <field name="short_name"/> (<field name="code"/>)
+                                    </div>
+                                    <div class="badge badge-info small mt-1">
+                                        Position: <field name="position"/>
+                                    </div>
+                                </div>
                             </div>
-                            <field name="short_name"/>
-                            <field name="code"/>
-                            <div class="o_text_overflow">
-                                <p>W</p>
-                                <field name="win"/>
+                        </div>
+                        <div class="o_kanban_card_content mt-3">
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="o_kanban_primary_bottom">
+                                        <div class="text-success fw-bold fs-6">
+                                            <field name="win"/>
+                                        </div>
+                                        <div class="text-muted small">Wins</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="o_kanban_primary_bottom">
+                                        <div class="text-warning fw-bold fs-6">
+                                            <field name="draw"/>
+                                        </div>
+                                        <div class="text-muted small">Draws</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="o_kanban_primary_bottom">
+                                        <div class="text-danger fw-bold fs-6">
+                                            <field name="loss"/>
+                                        </div>
+                                        <div class="text-muted small">Losses</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="o_kanban_primary_bottom">
+                                        <div class="text-primary fw-bold fs-5">
+                                            <field name="points"/>
+                                        </div>
+                                        <div class="text-muted small">Points</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="o_text_overflow">
-                                <p>L</p>
-                                <field name="loss"/>
+                        </div>
+                        <div class="o_kanban_card_footer mt-2">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" role="progressbar" t-attf-style="width: #{Math.round((record.strength.raw_value / 5) * 100)}%;" t-attf-aria-valuenow="#{record.strength.raw_value}" aria-valuemin="0" aria-valuemax="5"></div>
                             </div>
-                            <div class="o_text_overflow">
-                                <p>D</p>
-                                <field name="draw"/>
+                            <div class="text-center text-muted small mt-1">
+                                Strength: <field name="strength"/>/5
                             </div>
-                            <div class="o_text_overflow">
-                                <p>P</p>
-                                <field name="points"/>
-                            </div>
-                        </main>
+                        </div>
                     </t>
                 </templates>
             </kanban>
@@ -133,7 +222,7 @@
         <field name="name">fpl.teams.tree</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0" default_order="position asc">
+            <list create="0" edit="0" delete="0" default_order="position asc" string="Table">
                 <field name="position" widget="handle"/>
                 <field name="photo" widget="image" options="{'size': [40, 40]}"/>
                 <field name="name"/>
@@ -146,7 +235,7 @@
             </list>
         </field>
     </record>
-
+    
     <record id="fpl_teams_view_action" model="ir.actions.act_window">
         <field name="name">FPL Teams</field>
         <field name="res_model">fpl.teams</field>

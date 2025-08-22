@@ -10,7 +10,8 @@
 
     <menuitem id="menu_league_info_root" name="League Information" parent="menu_fpl_root" sequence="10"/>
     <menuitem id="menu_fpl_teams" name="Teams" parent="menu_league_info_root" sequence="1" action="fantasy_premier_league.fpl_teams_view_action"/>
-    <menuitem id="menu_fpl_elements" name="Players" parent="menu_league_info_root" sequence="1" action="fantasy_premier_league.fpl_elements_view_action"/>
-
+    <menuitem id="menu_fpl_elements" name="Players" parent="menu_league_info_root" sequence="2" action="fantasy_premier_league.fpl_elements_view_action"/>
+    <menuitem id="menu_fpl_elements_top_scorers" name="Top Scorers" parent="menu_league_info_root" sequence="3" action="fantasy_premier_league.fpl_elements_top_scorers_view_action"/>
+    <menuitem id="menu_fpl_elements_top_assists" name="Top Assists" parent="menu_league_info_root" sequence="4" action="fantasy_premier_league.fpl_elements_top_assists_view_action"/>
 
 </odoo>

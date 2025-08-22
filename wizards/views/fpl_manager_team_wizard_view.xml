@@ -14,7 +14,20 @@
 
                     <group/>
                     <group>
-                        <field name="tooltip" class="fst-italic text-muted" string="" readonly="1"/>
+                        <p class="text-muted"><strong>How to get your Manager ID ?</strong><br/>
+                            <em>Note: Manager ID will be automatically extracted from the API if not provided.</em><br/>
+                            1. Log in to <a href="https://fantasy.premierleague.com/" target="_blank">https://fantasy.premierleague.com/</a><br/>
+                            2. Access your team: Navigate to either the "Pick Team" or "Points" section.<br/>
+                            3. Check the URL: Look at the address bar of your browser.<br/>
+                            You'll see a URL similar to this: https://fantasy.premierleague.com/entry/1234567/event/1.<br/>
+                            The number after /entry/ and before /event/ (in this case, 1234567) is your FPL ID, according to several FPL resources.<br/><br/>
+
+                            <strong>How to get your Cookies and X-api-authorization ?</strong><br/>
+                            1. Open the developer tools (Ctrl+Shift+I or F12)<br/>
+                            2. Go to the Network tab<br/>
+                            3. Find the request to https://fantasy.premierleague.com/api/me/<br/>
+                            4. Copy the Cookies and X-api-authorization value from the request headers
+                        </p>
                     </group>
                 </sheet>
                 <footer>

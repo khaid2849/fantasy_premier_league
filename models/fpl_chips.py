@@ -15,6 +15,10 @@ class FPLChips(models.Model):
         [('wildcard', _('Wildcard')), ('freehit', _('Free Hit')), ('bboost', _('Bench Boost')), ('3xc', _('Triple Captain'))],
         compute='_compute_show_name'
     )
+    is_bench_boost = fields.Boolean(default=False)
+    is_wildcard = fields.Boolean(default=False)
+    is_free_hit = fields.Boolean(default=False)
+    is_triple_captain = fields.Boolean(default=False) 
 
     @api.depends('name')
     def _compute_show_name(self):

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_manager_team_history_wizard_form_view" model="ir.ui.view">
+        <field name="name">fpl.manager.team.history.wizard.form.view</field>
+        <field name="model">fpl.manager.team.history.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Manager History" delete="0" create="0" edit="0">
+                <sheet>
+                    <group string="Current Seasons">
+                        <field name="entry_history_ids" nolabel="1" widget="one2many" readonly="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="manager_id" column_invisible="1"/>    
+                                <field name="event_id"/>
+                                <field name="points"/>
+                                <field name="total_points"/>
+                                <field name="rank"/>
+                                <field name="bank"/>
+                                <field name="value"/>
+                                <field name="event_transfers"/>
+                                <field name="event_transfer_cost"/>
+                                <field name="points_on_bench"/>
+                                <field name="rank_sort" optional="hide"/>
+                                <field name="overall_rank" optional="hide"/>
+                            </list>
+                        </field>
+                    </group>    
+
+                    <group string="Past Seasons">
+                        <field name="entry_past_ids" nolabel="1" widget="one2many" readonly="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="manager_id" column_invisible="1"/>    
+                                <field name="season_name"/>
+                                <field name="total_poinst"/>
+                                <field name="rank"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Close" type="object" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="fpl_manager_team_history_wizard_action" model="ir.actions.act_window">
+        <field name="name">Manager History</field>
+        <field name="res_model">fpl.manager.team.history.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

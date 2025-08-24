@@ -16,3 +16,7 @@ class FPLManagerChips(models.Model):
     fpl_chip_id = fields.Char(string=_('ID'), related='chip_id.chip_id')
     manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))
     show_name = fields.Selection(related='chip_id.show_name')
+    is_bench_boost = fields.Boolean(related='chip_id.is_bench_boost')
+    is_wildcard = fields.Boolean(related='chip_id.is_wildcard')
+    is_free_hit = fields.Boolean(related='chip_id.is_free_hit')
+    is_triple_captain = fields.Boolean(related='chip_id.is_triple_captain') 

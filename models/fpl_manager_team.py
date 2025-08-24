@@ -1,6 +1,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from datetime import datetime
+
 from .master_data import REGIONS
 from .fpl_api_mixin import FPLApiMixin
 from ..services.fpl_api_client import FPLApiException
@@ -10,1046 +11,120 @@ _logger = logging.getLogger(__name__)
 
 class FPLManagerTeam(models.Model, FPLApiMixin):
     _name = 'fpl.manager.team'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+
     _description = 'FPL Manager Team'
     
     manager_id = fields.Char(string=_('Manager ID'))
+    cookies = fields.Char(string=_('Cookies'))
+    x_api_authorization = fields.Char(string=_('X-api-authorization'))
     #Manager Data
     manager_data_id = fields.Integer(string=_('Manager Data ID'))
-    date_of_birth = fields.Date(string=_('Date of Birth'))
-    default_event = fields.Integer(string=_('Default Event'))
-    dirty = fields.Boolean(string=_('Dirty'))
-    first_name = fields.Char(string=_('First Name'))
-    last_name = fields.Char(string=_('Last Name'))
-    full_name = fields.Char(string=_('Full Name'))
-    email = fields.Char(string=_('Email'))
-    gender = fields.Selection([('M', _('Male')), ('F', _('Female') )], string=_('Gender'))
+    date_of_birth = fields.Date(string=_('Date of Birth'), tracking=True)
+    default_event = fields.Integer(string=_('Default Event'), tracking=True)
+    dirty = fields.Boolean(string=_('Dirty'), tracking=True)
+    first_name = fields.Char(string=_('First Name'), tracking=True)
+    last_name = fields.Char(string=_('Last Name'), tracking=True)
+    full_name = fields.Char(string=_('Full Name'), tracking=True)
+    email = fields.Char(string=_('Email'), tracking=True)
+    gender = fields.Selection([('M', _('Male')), ('F', _('Female') )], string=_('Gender'), tracking=True)
     manger_data_id = fields.Integer(string=_('ID'))
-    region = fields.Char(string=_('Region'))
-    country_id = fields.Many2one('res.country', string=_('Country'))
-    entry_email = fields.Char(string=_('Entry Email'))
-    entry_language = fields.Char(string=_('Entry Language'))
-    sso_id = fields.Char(string=_('SSO ID'))
+    region = fields.Char(string=_('Region'), tracking=True)
+    country_id = fields.Many2one('res.country', string=_('Country'), tracking=True)
+    entry_email = fields.Char(string=_('Entry Email'), tracking=True)
+    entry_language = fields.Char(string=_('Entry Language'), tracking=True)
+    sso_id = fields.Char(string=_('SSO ID'), tracking=True)
     #Manager Entry Summary
-    joined_time = fields.Datetime(string=_('Joined Time'))
-    started_event = fields.Integer(string=_('Started Event'))
-    favourite_team = fields.Many2one('fpl.teams', string=_('Favourite Team'))
-    player_first_name = fields.Char(string=_('Player First Name'))
-    player_last_name = fields.Char(string=_('Player Last Name'))
-    player_region_id = fields.Char(string=_('Player Region ID'))
-    player_region_name = fields.Char(string=_('Player Region Name'))
-    player_region_iso_code_short = fields.Char(string=_('Player Region ISO Code Short'))
-    player_region_iso_code_long = fields.Char(string=_('Player Region ISO Code Long'))
-    years_active = fields.Integer(string=_('Years Active'))
-    summary_overall_points = fields.Integer(string=_('Summary Overall Points'))
-    summary_overall_rank = fields.Integer(string=_('Summary Overall Rank'))
-    summary_event_points = fields.Integer(string=_('Summary Event Points'))
-    summary_event_rank = fields.Integer(string=_('Summary Event Rank'))
-    current_event = fields.Integer(string=_('Current Event'))
-    name = fields.Char(string=_('Name'))
-    name_change_blocked = fields.Boolean(string=_('Name Change Blocked'))
-    kits = fields.Char(string=_('Kits'))
-    last_deadline_bank = fields.Integer(string=_('Last Deadline Bank'))
-    last_deadline_value = fields.Integer(string=_('Last Deadline Value'))
-    last_deadline_total_transfers = fields.Integer(string=_('Last Deadline Total Transfers'))
-    club_badge_src = fields.Char(string=_('Club Badge Src'))
+    joined_time = fields.Datetime(string=_('Joined Time'), tracking=True)
+    started_event = fields.Integer(string=_('Started Event'), tracking=True)
+    favourite_team = fields.Many2one('fpl.teams', string=_('Favourite Team'), tracking=True)
+    player_first_name = fields.Char(string=_('Player First Name'), tracking=True)
+    player_last_name = fields.Char(string=_('Player Last Name'), tracking=True)
+    player_region_id = fields.Char(string=_('Player Region ID'), tracking=True)
+    player_region_name = fields.Char(string=_('Player Region Name'), tracking=True)
+    player_region_iso_code_short = fields.Char(string=_('Player Region ISO Code Short'), tracking=True)
+    player_region_iso_code_long = fields.Char(string=_('Player Region ISO Code Long'), tracking=True)
+    years_active = fields.Integer(string=_('Years Active'), tracking=True)
+    summary_overall_points = fields.Integer(string=_('Summary Overall Points'), tracking=True)
+    summary_overall_rank = fields.Integer(string=_('Summary Overall Rank'), tracking=True)
+    summary_event_points = fields.Integer(string=_('Current Gameweek points'), tracking=True)
+    summary_event_rank = fields.Integer(string=_('Current Gameweek Rank'), tracking=True)
+    current_event = fields.Integer(string=_('Current Gameweek'), tracking=True)
+    name = fields.Char(string=_('Name'), tracking=True)
+    name_change_blocked = fields.Boolean(string=_('Name Change Blocked'), tracking=True)
+    kits = fields.Char(string=_('Kits'), tracking=True)
+    last_deadline_bank = fields.Integer(string=_('Last Deadline Bank'), tracking=True)
+    last_deadline_value = fields.Integer(string=_('Last Deadline Value'), tracking=True)
+    last_deadline_total_transfers = fields.Integer(string=_('Last Deadline Total Transfers'), tracking=True)
+    club_badge_src = fields.Char(string=_('Club Badge Src'), tracking=True)
     league_classic_ids = fields.One2many('fpl.leagues', 'manager_id', string=_('League Classic IDs'), domain=[('type', '=', 'classic')])
     league_h2h_ids = fields.One2many('fpl.leagues', 'manager_id', string=_('League H2H IDs'), domain=[('type', '=', 'h2h')])
     pick_ids = fields.One2many('fpl.picks', 'manager_id', string=_('Element IDs'))
     manager_chip_ids = fields.One2many('fpl.manager.chips', 'manager_id', string=_('Manager Chips'))
-    picks_last_updated = fields.Datetime(string=_('Picks Last Updated'))
+    picks_last_updated = fields.Datetime(string=_('Picks Last Updated'), tracking=True)
 
     #Transfer Info
-    cost = fields.Integer(string=_('Cost'))
-    status = fields.Char(string=_('Status'))
-    limit = fields.Integer(string=_('Transfers Limit'))
-    made = fields.Float(string=_('Transfers Made'))
-    bank = fields.Float(string=_('In the Bank'))
-    value = fields.Float(string=_('Squad Value'))
+    cost = fields.Integer(string=_('Cost'), tracking=True)
+    status = fields.Char(string=_('Status'), tracking=True)
+    limit = fields.Integer(string=_('Transfers Limit'), tracking=True)
+    made = fields.Float(string=_('Transfers Made'), tracking=True)
+    bank = fields.Float(string=_('In the Bank'), tracking=True)
+    value = fields.Float(string=_('Squad Value'), tracking=True)
+    status_for_entry = fields.Selection([('available', _('Available')), ('used', _('Used'))], string=_('Status for Entry'))
     
+    used_bench_boost = fields.Boolean(compute='_computed_used_chips')
+    used_wildcard = fields.Boolean(compute='_computed_used_chips')
+    used_free_hit = fields.Boolean(compute='_computed_used_chips')
+    used_triple_captain = fields.Boolean(compute='_computed_used_chips')
+
+    #Entry History
+    entry_history_ids = fields.One2many('fpl.entry.history', 'manager_id', string=_('Entry History'))
+    entry_past_ids = fields.One2many('fpl.past', 'manager_id', string=_('Entry Past'))
+
+    @api.depends('manager_chip_ids')
+    def _computed_used_chips(self):
+        for rec in self:
+            if rec.manager_chip_ids:
+                rec.used_bench_boost = False if any(chip.is_bench_boost and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_wildcard = False if any(chip.is_wildcard and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_free_hit = False if any(chip.is_free_hit and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_triple_captain = False if any(chip.is_triple_captain and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
+
+
+    def action_open_entry_history(self):
+        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_manager_team_history_wizard_action')
+        action.update({
+                'context': {
+                    'default_entry_history_ids': self.entry_history_ids.ids,
+                    'default_entry_past_ids': self.entry_past_ids.ids,
+                },
+            }
+        )
+        return action
+
+    def action_verify_manager_data(self):
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_manager_team_wizard_action')
+        action.update({
+                'context': {
+                    'default_manager_id':  self.manager_id, 
+                    'default_cookies':  self.cookies, 
+                    'default_x_api_authorization':  self.x_api_authorization,
+                    'is_readonly': True,    
+                },
+        })
+        return action
     
     @api.model
     def sync_manager_data(self, cookies, x_api_authorization, manager_id=None):
         """Sync manager data from FPL API using authentication and create/update record"""
         try:
-            # manager_data = self.with_context().sync_authenticated_data(
-            #     'get_manager_data', 
-            #     cookies, 
-            #     x_api_authorization
-            # )
+            manager_data = self.with_context().sync_authenticated_data(
+                'get_manager_data', 
+                cookies, 
+                x_api_authorization
+            )
             
-            manager_data = {
-                "player": {
-                    "date_of_birth": "1999-04-28",
-                    "default_event": 2,
-                    "dirty": False,
-                    "first_name": "Khai",
-                    "gender": "M",
-                    "id": 66737509,
-                    "last_name": "Dang",
-                    "region": 234,
-                    "email": "dangkhai2849@gmail.com",
-                    "entry": 894358,
-                    "entry_email": False,
-                    "entry_language": None,
-                    "sso_id": "5abbd00e-d223-4e81-88ba-fa15847f55a8"
-                },
-                "watched": []
-                }
-
-            entry_summary = {
-                "id": 894358,
-                "joined_time": "2025-07-22T05:21:47.259864Z",
-                "started_event": 1,
-                "favourite_team": 7,
-                "player_first_name": "Khai",
-                "player_last_name": "Dang",
-                "player_region_id": 234,
-                "player_region_name": "Vietnam",
-                "player_region_iso_code_short": "VN",
-                "player_region_iso_code_long": "VNM",
-                "years_active": 3,
-                "summary_overall_points": 50,
-                "summary_overall_rank": 5781357,
-                "summary_event_points": 50,
-                "summary_event_rank": 5781366,
-                "current_event": 1,
-                "leagues": {
-                    "classic": [
-                        {
-                            "id": 7,
-                            "name": "Chelsea",
-                            "short_name": "team-7",
-                            "created": "2025-07-20T23:14:28.429685Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "s",
-                            "scoring": "c",
-                            "admin_entry": None,
-                            "start_event": 1,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 761588,
-                            "entry_percentile_rank": 60,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 456824,
-                                    "last_rank": 0,
-                                    "rank_sort": 459388,
-                                    "total": 50,
-                                    "league_id": 7,
-                                    "rank_count": 761588,
-                                    "entry_percentile_rank": 60
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 456825,
-                                    "last_rank": 0,
-                                    "rank_sort": 459389,
-                                    "total": 50,
-                                    "league_id": 7,
-                                    "rank_count": 761589,
-                                    "entry_percentile_rank": 60
-                                }
-                            ],
-                            "entry_rank": 456824,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 254,
-                            "name": "Vietnam",
-                            "short_name": "region-234",
-                            "created": "2025-07-20T23:14:32.876326Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "s",
-                            "scoring": "c",
-                            "admin_entry": None,
-                            "start_event": 1,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 10530,
-                            "entry_percentile_rank": 65,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 6433,
-                                    "last_rank": 0,
-                                    "rank_sort": 6505,
-                                    "total": 50,
-                                    "league_id": 254,
-                                    "rank_count": 10530,
-                                    "entry_percentile_rank": 65
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 6433,
-                                    "last_rank": 0,
-                                    "rank_sort": 6505,
-                                    "total": 50,
-                                    "league_id": 254,
-                                    "rank_count": 10530,
-                                    "entry_percentile_rank": 65
-                                }
-                            ],
-                            "entry_rank": 6433,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 276,
-                            "name": "Gameweek 1",
-                            "short_name": "event-1",
-                            "created": "2025-07-20T23:14:33.264422Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "s",
-                            "scoring": "c",
-                            "admin_entry": None,
-                            "start_event": 1,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": False,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 9469100,
-                            "entry_percentile_rank": 65,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 5781356,
-                                    "last_rank": 0,
-                                    "rank_sort": 5809553,
-                                    "total": 50,
-                                    "league_id": 276,
-                                    "rank_count": 9469100,
-                                    "entry_percentile_rank": 65
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 5781348,
-                                    "last_rank": 0,
-                                    "rank_sort": 5809545,
-                                    "total": 50,
-                                    "league_id": 276,
-                                    "rank_count": 9469082,
-                                    "entry_percentile_rank": 65
-                                }
-                            ],
-                            "entry_rank": 5781356,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 314,
-                            "name": "Overall",
-                            "short_name": "overall",
-                            "created": "2025-07-20T23:14:33.933835Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "s",
-                            "scoring": "c",
-                            "admin_entry": None,
-                            "start_event": 1,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 9469102,
-                            "entry_percentile_rank": 65,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 5781357,
-                                    "last_rank": 0,
-                                    "rank_sort": 5809554,
-                                    "total": 50,
-                                    "league_id": 314,
-                                    "rank_count": 9469102,
-                                    "entry_percentile_rank": 65
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 5781350,
-                                    "last_rank": 0,
-                                    "rank_sort": 5809547,
-                                    "total": 50,
-                                    "league_id": 314,
-                                    "rank_count": 9469086,
-                                    "entry_percentile_rank": 65
-                                }
-                            ],
-                            "entry_rank": 5781357,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 333,
-                            "name": "Second Chance",
-                            "short_name": "sc",
-                            "created": "2025-07-20T23:14:34.276586Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "s",
-                            "scoring": "c",
-                            "admin_entry": None,
-                            "start_event": 21,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": False,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": None,
-                            "entry_percentile_rank": None,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 0,
-                                    "last_rank": 0,
-                                    "rank_sort": 0,
-                                    "total": 0,
-                                    "league_id": 333,
-                                    "rank_count": None,
-                                    "entry_percentile_rank": None
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 0,
-                                    "last_rank": 0,
-                                    "rank_sort": 0,
-                                    "total": 0,
-                                    "league_id": 333,
-                                    "rank_count": None,
-                                    "entry_percentile_rank": None
-                                }
-                            ],
-                            "entry_rank": 0,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 561,
-                            "name": "YouTube.com/FPLtips",
-                            "short_name": None,
-                            "created": "2025-07-21T11:33:10.868406Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 4464,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 51954,
-                            "entry_percentile_rank": 70,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 33916,
-                                    "last_rank": 0,
-                                    "rank_sort": 34319,
-                                    "total": 50,
-                                    "league_id": 561,
-                                    "rank_count": 51954,
-                                    "entry_percentile_rank": 70
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 33916,
-                                    "last_rank": 0,
-                                    "rank_sort": 34319,
-                                    "total": 50,
-                                    "league_id": 561,
-                                    "rank_count": 51954,
-                                    "entry_percentile_rank": 70
-                                }
-                            ],
-                            "entry_rank": 33916,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 1623,
-                            "name": "YouTube.com/FPLFocal",
-                            "short_name": None,
-                            "created": "2025-07-21T11:36:06.025961Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 200,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 62506,
-                            "entry_percentile_rank": 75,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 44197,
-                                    "last_rank": 0,
-                                    "rank_sort": 45118,
-                                    "total": 50,
-                                    "league_id": 1623,
-                                    "rank_count": 62506,
-                                    "entry_percentile_rank": 75
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 44196,
-                                    "last_rank": 0,
-                                    "rank_sort": 45117,
-                                    "total": 50,
-                                    "league_id": 1623,
-                                    "rank_count": 62505,
-                                    "entry_percentile_rank": 75
-                                }
-                            ],
-                            "entry_rank": 44197,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 35207,
-                            "name": "ShakeThatAston",
-                            "short_name": None,
-                            "created": "2025-07-21T12:55:52.667144Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 72698,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": True,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 229,
-                            "entry_percentile_rank": 70,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 152,
-                                    "last_rank": 0,
-                                    "rank_sort": 154,
-                                    "total": 50,
-                                    "league_id": 35207,
-                                    "rank_count": 229,
-                                    "entry_percentile_rank": 70
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 152,
-                                    "last_rank": 0,
-                                    "rank_sort": 154,
-                                    "total": 50,
-                                    "league_id": 35207,
-                                    "rank_count": 229,
-                                    "entry_percentile_rank": 70
-                                }
-                            ],
-                            "entry_rank": 152,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 39776,
-                            "name": "Official /r/FantasyPL Classic League",
-                            "short_name": None,
-                            "created": "2025-07-21T13:07:52.424514Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 217222,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 35623,
-                            "entry_percentile_rank": 70,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 24694,
-                                    "last_rank": 0,
-                                    "rank_sort": 25138,
-                                    "total": 50,
-                                    "league_id": 39776,
-                                    "rank_count": 35623,
-                                    "entry_percentile_rank": 70
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 24696,
-                                    "last_rank": 0,
-                                    "rank_sort": 25140,
-                                    "total": 50,
-                                    "league_id": 39776,
-                                    "rank_count": 35625,
-                                    "entry_percentile_rank": 70
-                                }
-                            ],
-                            "entry_rank": 24694,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 475909,
-                            "name": "League Nhà Quê SS7 - Classic",
-                            "short_name": None,
-                            "created": "2025-07-28T02:03:01.262268Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 2535381,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 29,
-                            "entry_percentile_rank": 70,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 20,
-                                    "last_rank": 0,
-                                    "rank_sort": 20,
-                                    "total": 50,
-                                    "league_id": 475909,
-                                    "rank_count": 29,
-                                    "entry_percentile_rank": 70
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 20,
-                                    "last_rank": 0,
-                                    "rank_sort": 20,
-                                    "total": 50,
-                                    "league_id": 475909,
-                                    "rank_count": 29,
-                                    "entry_percentile_rank": 70
-                                }
-                            ],
-                            "entry_rank": 20,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 475912,
-                            "name": "League Nhà Quê SS7 - Month",
-                            "short_name": None,
-                            "created": "2025-07-28T02:03:15.079395Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 2535381,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 29,
-                            "entry_percentile_rank": 70,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 20,
-                                    "last_rank": 0,
-                                    "rank_sort": 20,
-                                    "total": 50,
-                                    "league_id": 475912,
-                                    "rank_count": 29,
-                                    "entry_percentile_rank": 70
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 20,
-                                    "last_rank": 0,
-                                    "rank_sort": 20,
-                                    "total": 50,
-                                    "league_id": 475912,
-                                    "rank_count": 29,
-                                    "entry_percentile_rank": 70
-                                }
-                            ],
-                            "entry_rank": 20,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 577318,
-                            "name": "Chuồng Thỏ",
-                            "short_name": None,
-                            "created": "2025-07-30T09:14:41.372905Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 2975058,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": True,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 1068,
-                            "entry_percentile_rank": 75,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 755,
-                                    "last_rank": 0,
-                                    "rank_sort": 778,
-                                    "total": 50,
-                                    "league_id": 577318,
-                                    "rank_count": 1068,
-                                    "entry_percentile_rank": 75
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 755,
-                                    "last_rank": 0,
-                                    "rank_sort": 778,
-                                    "total": 50,
-                                    "league_id": 577318,
-                                    "rank_count": 1068,
-                                    "entry_percentile_rank": 75
-                                }
-                            ],
-                            "entry_rank": 755,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 817012,
-                            "name": "Báo Bóng Đá Fantasy",
-                            "short_name": None,
-                            "created": "2025-08-05T04:34:26.355480Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 3962818,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 1372,
-                            "entry_percentile_rank": 75,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 981,
-                                    "last_rank": 0,
-                                    "rank_sort": 1005,
-                                    "total": 50,
-                                    "league_id": 817012,
-                                    "rank_count": 1372,
-                                    "entry_percentile_rank": 75
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 981,
-                                    "last_rank": 0,
-                                    "rank_sort": 1005,
-                                    "total": 50,
-                                    "league_id": 817012,
-                                    "rank_count": 1372,
-                                    "entry_percentile_rank": 75
-                                }
-                            ],
-                            "entry_rank": 981,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 856738,
-                            "name": "Planning Makes Perfect",
-                            "short_name": None,
-                            "created": "2025-08-05T19:47:33.835534Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 6586,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 235,
-                            "entry_percentile_rank": None,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 0,
-                                    "last_rank": 0,
-                                    "rank_sort": 0,
-                                    "total": 0,
-                                    "league_id": 856738,
-                                    "rank_count": 235,
-                                    "entry_percentile_rank": None
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 0,
-                                    "last_rank": 0,
-                                    "rank_sort": 0,
-                                    "total": 0,
-                                    "league_id": 856738,
-                                    "rank_count": 235,
-                                    "entry_percentile_rank": None
-                                }
-                            ],
-                            "entry_rank": 0,
-                            "entry_last_rank": 0
-                        },
-                        {
-                            "id": 1445607,
-                            "name": "Chelscenes Mini-League",
-                            "short_name": None,
-                            "created": "2025-08-13T11:17:59.689111Z",
-                            "closed": False,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "c",
-                            "admin_entry": 6146093,
-                            "start_event": 1,
-                            "entry_can_leave": True,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": True,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": 1370,
-                            "entry_percentile_rank": 65,
-                            "active_phases": [
-                                {
-                                    "phase": 1,
-                                    "rank": 838,
-                                    "last_rank": 0,
-                                    "rank_sort": 850,
-                                    "total": 50,
-                                    "league_id": 1445607,
-                                    "rank_count": 1370,
-                                    "entry_percentile_rank": 65
-                                },
-                                {
-                                    "phase": 2,
-                                    "rank": 838,
-                                    "last_rank": 0,
-                                    "rank_sort": 850,
-                                    "total": 50,
-                                    "league_id": 1445607,
-                                    "rank_count": 1370,
-                                    "entry_percentile_rank": 65
-                                }
-                            ],
-                            "entry_rank": 838,
-                            "entry_last_rank": 0
-                        }
-                    ],
-                    "h2h": [
-                        {
-                            "id": 475922,
-                            "name": "League Nhà Quê SS7 - H2H",
-                            "short_name": None,
-                            "created": "2025-07-28T02:03:34.382008Z",
-                            "closed": True,
-                            "rank": None,
-                            "max_entries": None,
-                            "league_type": "x",
-                            "scoring": "h",
-                            "admin_entry": 2535381,
-                            "start_event": 1,
-                            "entry_can_leave": False,
-                            "entry_can_admin": False,
-                            "entry_can_invite": False,
-                            "has_cup": False,
-                            "cup_league": None,
-                            "cup_qualified": None,
-                            "rank_count": None,
-                            "entry_percentile_rank": None,
-                            "active_phases": [],
-                            "entry_rank": 15,
-                            "entry_last_rank": 0
-                        }
-                    ],
-                    "cup": {
-                        "matches": [],
-                        "status": {
-                            "qualification_event": None,
-                            "qualification_numbers": None,
-                            "qualification_rank": None,
-                            "qualification_state": None
-                        },
-                        "cup_league": None
-                    },
-                    "cup_matches": []
-                },
-                "name": "U know chippy chips?",
-                "name_change_blocked": False,
-                "entered_events": [
-                    1
-                ],
-                "kit": None,
-                "last_deadline_bank": 5,
-                "last_deadline_value": 1000,
-                "last_deadline_total_transfers": 0,
-                "club_badge_src": None
-            }
-
-            manager_team_data = {
-    "picks": [
-        {
-            "element": 220,
-            "position": 1,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 1,
-            "selling_price": 50,
-            "purchase_price": 50
-        },
-        {
-            "element": 505,
-            "position": 2,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 2,
-            "selling_price": 55,
-            "purchase_price": 55
-        },
-        {
-            "element": 568,
-            "position": 3,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 2,
-            "selling_price": 55,
-            "purchase_price": 55
-        },
-        {
-            "element": 191,
-            "position": 4,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 2,
-            "selling_price": 40,
-            "purchase_price": 40
-        },
-        {
-            "element": 261,
-            "position": 5,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 2,
-            "selling_price": 45,
-            "purchase_price": 45
-        },
-        {
-            "element": 235,
-            "position": 6,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": True,
-            "element_type": 3,
-            "selling_price": 105,
-            "purchase_price": 105
-        },
-        {
-            "element": 299,
-            "position": 7,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 3,
-            "selling_price": 65,
-            "purchase_price": 65
-        },
-        {
-            "element": 381,
-            "position": 8,
-            "multiplier": 2,
-            "is_captain": True,
-            "is_vice_captain": False,
-            "element_type": 3,
-            "selling_price": 145,
-            "purchase_price": 145
-        },
-        {
-            "element": 449,
-            "position": 9,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 3,
-            "selling_price": 90,
-            "purchase_price": 90
-        },
-        {
-            "element": 283,
-            "position": 10,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 4,
-            "selling_price": 75,
-            "purchase_price": 75
-        },
-        {
-            "element": 64,
-            "position": 11,
-            "multiplier": 1,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 4,
-            "selling_price": 90,
-            "purchase_price": 90
-        },
-        {
-            "element": 470,
-            "position": 12,
-            "multiplier": 0,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 1,
-            "selling_price": 40,
-            "purchase_price": 40
-        },
-        {
-            "element": 242,
-            "position": 13,
-            "multiplier": 0,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 3,
-            "selling_price": 50,
-            "purchase_price": 50
-        },
-        {
-            "element": 575,
-            "position": 14,
-            "multiplier": 0,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 2,
-            "selling_price": 45,
-            "purchase_price": 45
-        },
-        {
-            "element": 252,
-            "position": 15,
-            "multiplier": 0,
-            "is_captain": False,
-            "is_vice_captain": False,
-            "element_type": 4,
-            "selling_price": 45,
-            "purchase_price": 45
-        }
-    ],
-    "picks_last_updated": "2025-08-20T05:19:17.793585Z",
-    "chips": [
-        {
-            "id": 4,
-            "status_for_entry": "available",
-            "played_by_entry": [],
-            "name": "bboost",
-            "number": 1,
-            "start_event": 1,
-            "stop_event": 19,
-            "chip_type": "team",
-            "is_pending": False
-        },
-        {
-            "id": 5,
-            "status_for_entry": "available",
-            "played_by_entry": [],
-            "name": "3xc",
-            "number": 1,
-            "start_event": 1,
-            "stop_event": 19,
-            "chip_type": "team",
-            "is_pending": False
-        },
-        {
-            "id": 1,
-            "status_for_entry": "available",
-            "played_by_entry": [],
-            "name": "wildcard",
-            "number": 1,
-            "start_event": 2,
-            "stop_event": 19,
-            "chip_type": "transfer",
-            "is_pending": False
-        },
-        {
-            "id": 3,
-            "status_for_entry": "available",
-            "played_by_entry": [],
-            "name": "freehit",
-            "number": 1,
-            "start_event": 2,
-            "stop_event": 19,
-            "chip_type": "transfer",
-            "is_pending": False
-        }
-    ],
-    "transfers": {
-        "cost": 4,
-        "status": "cost",
-        "limit": 1,
-        "made": 0,
-        "bank": 5,
-        "value": 995
-    }
-}
             if not manager_data:
                 raise UserError(_("No manager data received from API"))
             
@@ -1066,20 +141,47 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             
             manager_team = self.search([('manager_id', '=', api_manager_id)], limit=1)
             if not manager_team:
-                manager_team = self.create({'manager_id': api_manager_id})
+                manager_team = self.create({
+                    'manager_id': api_manager_id,
+                    'cookies': cookies,
+                    'x_api_authorization': x_api_authorization,
+                    }
+                )
                 _logger.info(f"Created new manager team record for ID: {api_manager_id}")
             else:
+                manager_team.write({
+                    'cookies': cookies,
+                    'x_api_authorization': x_api_authorization,
+                })
                 _logger.info(f"Found existing manager team record for ID: {api_manager_id}")
             
-            # entry_summary = manager_team.sync_from_fpl_api(
-            #     'get_entry_summary', 
-            #     api_manager_id
-            # )
+            entry_summary = manager_team.sync_from_fpl_api(
+                'get_entry_summary', 
+                api_manager_id,
+            )
+
+            manager_team_data = manager_team.sync_authenticated_data(
+                'get_manager_team',
+                cookies, 
+                x_api_authorization,
+                api_manager_id
+            )
             
+            entry_history_data = manager_team.sync_from_fpl_api(
+                'get_entry_history',
+                api_manager_id,
+            )
             manager_team._update_from_manager_data(manager_data.get('player', {}))
             manager_team._update_from_entry_summary(entry_summary, manager_team.id)
             manager_team._update_from_manager_team(manager_team_data, manager_team.id)
+            manager_team._update_from_entry_histroy(entry_history_data, manager_id)
             
+            leauge_ids = self.env['fpl.leagues'].search([('manager_id', '=', manager_team.id)])
+            if leauge_ids:
+                league_phase_mapping = {leauge: leauge.active_phases_ids for leauge in leauge_ids if leauge.active_phases_ids}
+                if league_phase_mapping:
+                    self._update_league_standings(league_phase_mapping)
+
             _logger.info(f"Successfully synced data for manager {api_manager_id}")
             return manager_team
                 
@@ -1089,7 +191,107 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         except Exception as e:
             _logger.error(f"Unexpected error during sync: {str(e)}")
             raise UserError(f"Unexpected error during sync: {str(e)}")
-    
+
+    def _update_from_entry_histroy(self, data, manager_id):
+        existing_history = {h.event_id.event_id: h for h in self.env['fpl.entry.history'].search([('manager_id', '=', manager_id)])}
+        existing_past = {p.season_name: p for p in self.env['fpl.past'].search([('manager_id', '=', manager_id)])}
+        
+        event_ids = [history.get('event') for history in data.get('current', [])]
+        events_dict = {e.event_id: e for e in self.env['fpl.events'].search([('event_id', 'in', event_ids)])}
+        
+        history_to_create = []
+        history_to_update = []
+        current_history_events = set()
+        
+        for history in data.get('current', []):
+            event_id = history.get('event')
+            current_history_events.add(event_id)
+            event_record = events_dict.get(event_id)
+            
+            if not event_record:
+                continue
+                
+            val = {
+                'event_id': event_record.id,
+                'points': history.get('points'),
+                'total_points': history.get('total_points'),
+                'rank': history.get('rank'),
+                'rank_sort': history.get('rank_sort'),
+                'overall_rank': history.get('overall_rank'),
+                'bank': history.get('bank'),
+                'value': history.get('value'),
+                'event_transfers': history.get('event_transfers'),
+                'event_transfer_cost': history.get('event_transfer_cost'),
+                'points_on_bench': history.get('points_on_bench'),
+                'manager_id': manager_id,
+            }
+            
+            existing_record = existing_history.get(event_id)
+            if existing_record:
+                needs_update = False
+                for key, new_val in val.items():
+                    if key != 'manager_id' and hasattr(existing_record, key) and getattr(existing_record, key) != new_val:
+                        needs_update = True
+                        break
+                if needs_update:
+                    history_to_update.append((existing_record, val))
+            else:
+                history_to_create.append(val)
+
+        past_to_create = []
+        past_to_update = []
+        current_past_seasons = set()
+        
+        for past in data.get('past', []):
+            season_name = past.get('season_name')
+            current_past_seasons.add(season_name)
+            
+            val = {
+                'season_name': season_name,
+                'total_poinst': past.get('total_points'),
+                'rank': past.get('rank'),
+                'manager_id': manager_id,
+            }
+            
+            existing_record = existing_past.get(season_name)
+            if existing_record:
+                needs_update = False
+                for key, new_val in val.items():
+                    if key != 'manager_id' and hasattr(existing_record, key) and getattr(existing_record, key) != new_val:
+                        needs_update = True
+                        break
+                if needs_update:
+                    past_to_update.append((existing_record, val))
+            else:
+                past_to_create.append(val)
+        
+        obsolete_history = [rec for event_id, rec in existing_history.items() if event_id not in current_history_events]
+        obsolete_past = [rec for season, rec in existing_past.items() if season not in current_past_seasons]
+        
+        if obsolete_history:
+            for rec in obsolete_history:
+                rec.unlink()
+        if obsolete_past:
+            for rec in obsolete_past:
+                rec.unlink()
+        
+        created_history = self.env['fpl.entry.history'].create(history_to_create) if history_to_create else self.env['fpl.entry.history']
+        created_past = self.env['fpl.past'].create(past_to_create) if past_to_create else self.env['fpl.past']
+        
+        for record, vals in history_to_update:
+            record.write(vals)
+        for record, vals in past_to_update:
+            record.write(vals)
+        
+        if history_to_create or past_to_create:
+            all_history = list(existing_history.values()) + list(created_history)
+            all_past = list(existing_past.values()) + list(created_past)
+            
+            self.write({
+                'entry_history_ids': [(6, 0, [h.id for h in all_history])],
+                'entry_past_ids': [(6, 0, [p.id for p in all_past])]
+            })
+
     def _update_from_manager_team(self, data, manager_id):
         """Update model fields from manager team API response"""
         if not data:
@@ -1109,44 +311,130 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             self.write(update_vals)
 
     def _update_manager_picks_data(self, picks, manager_id):
-        self.env['fpl.picks'].search([('manager_id', '=', manager_id)]).unlink()
         if not picks:
-            return
-        picks_vals = []
+            existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id)])
+            if existing_picks:
+                existing_picks.unlink()
+            return []
+        
+        existing_picks = {(p.element_id.element_id, p.position): p for p in self.env['fpl.picks'].search([('manager_id', '=', manager_id)])}
+        
+        element_ids = [pick.get('element') for pick in picks]
+        element_type_ids = [pick.get('element_type') for pick in picks]
+        
+        elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search([('element_id', 'in', element_ids)])}
+        element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search([('element_type_id', 'in', [str(et_id) for et_id in element_type_ids])])}
+        
+        picks_to_create = []
+        picks_to_update = []
+        current_picks = set()
+        
         for pick in picks:
-            element = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))], limit=1)
-            if not element:
+            element_id = pick.get('element')
+            position = pick.get('position')
+            current_picks.add((element_id, position))
+            
+            element = elements_dict.get(element_id)
+            element_type = element_types_dict.get(str(pick.get('element_type')))
+            
+            if not element or not element_type:
                 continue
+                
             pick_vals = {
                 'element_id': element.id,
-                'position': pick.get('position'),
+                'position': position,
                 'multiplier': pick.get('multiplier'),
                 'is_captain': pick.get('is_captain'),
                 'is_vice_captain': pick.get('is_vice_captain'),
-                'element_type_id':self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))], limit=1).id,
+                'element_type_id': element_type.id,
                 'selling_price': pick.get('selling_price') / 10,
                 'purchase_price': pick.get('purchase_price') / 10,
+                'manager_id': manager_id,
             }
-            picks_vals.append((0, 0, pick_vals))
-        return picks_vals
+            
+            existing_pick = existing_picks.get((element_id, position))
+            if existing_pick:
+                needs_update = False
+                for key, new_val in pick_vals.items():
+                    if key != 'manager_id' and hasattr(existing_pick, key) and getattr(existing_pick, key) != new_val:
+                        needs_update = True
+                        break
+                if needs_update:
+                    picks_to_update.append((existing_pick, pick_vals))
+            else:
+                picks_to_create.append(pick_vals)
+        
+        obsolete_picks = [pick for key, pick in existing_picks.items() if key not in current_picks]
+        if obsolete_picks:
+            for pick in obsolete_picks:
+                pick.unlink()
+        
+        for pick, vals in picks_to_update:
+            pick.write(vals)
+        
+        if picks_to_create:
+            created_picks = self.env['fpl.picks'].create(picks_to_create)
+            return [(0, 0, {'id': pick.id}) for pick in created_picks]
+        else:
+            return []
 
     def _update_manager_chips_data(self, chips, manager_id):
-        self.env['fpl.manager.chips'].search([('manager_id', '=', manager_id)]).unlink()
         if not chips:
-            return
-        chips_vals = []
+            existing_chips = self.env['fpl.manager.chips'].search([('manager_id', '=', manager_id)])
+            if existing_chips:
+                existing_chips.unlink()
+            return []
+        
+        existing_chips = {c.chip_id.chip_id: c for c in self.env['fpl.manager.chips'].search([('manager_id', '=', manager_id)])}
+        
+        chip_ids = [str(chip.get('id')) for chip in chips]
+        chips_dict = {c.chip_id: c for c in self.env['fpl.chips'].search([('chip_id', 'in', chip_ids)])}
+        
+        chips_to_create = []
+        chips_to_update = []
+        current_chips = set()
+        
         for chip in chips:
-            chip_id = self.env['fpl.chips'].search([('chip_id', '=', chip.get('id'))], limit=1)
-            if not chip_id:
+            chip_api_id = str(chip.get('id'))
+            current_chips.add(chip_api_id)
+            
+            chip_record = chips_dict.get(chip_api_id)
+            if not chip_record:
                 continue
+                
             chip_vals = {
-                'chip_id': chip_id.id,
+                'chip_id': chip_record.id,
                 'status_for_entry': chip.get('status_for_entry'),
                 'played_by_entry': chip.get('played_by_entry'),
                 'is_pending': chip.get('is_pending'),
+                'manager_id': manager_id,
             }
-            chips_vals.append((0, 0, chip_vals))
-        return chips_vals
+            
+            existing_chip = existing_chips.get(chip_api_id)
+            if existing_chip:
+                needs_update = False
+                for key, new_val in chip_vals.items():
+                    if key != 'manager_id' and hasattr(existing_chip, key) and getattr(existing_chip, key) != new_val:
+                        needs_update = True
+                        break
+                if needs_update:
+                    chips_to_update.append((existing_chip, chip_vals))
+            else:
+                chips_to_create.append(chip_vals)
+        
+        obsolete_chips = [chip for chip_id, chip in existing_chips.items() if chip_id not in current_chips]
+        if obsolete_chips:
+            for chip in obsolete_chips:
+                chip.unlink()
+        
+        for chip, vals in chips_to_update:
+            chip.write(vals)
+        
+        if chips_to_create:
+            created_chips = self.env['fpl.manager.chips'].create(chips_to_create)
+            return [(0, 0, {'id': chip.id}) for chip in created_chips]
+        else:
+            return []
     
     def _update_from_manager_data(self, data):
         """Update model fields from manager data API response"""
@@ -1207,16 +495,26 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             self.write(update_vals)
 
     def _update_manager_leagues_data(self, datas, manager_id, type):
-        exist_manager_leagues = self.env['fpl.leagues'].search([('manager_id', '=', manager_id), ('type', '=', type)])
-        if exist_manager_leagues:
-            exist_manager_leagues.active_phases_ids.unlink()
-            exist_manager_leagues.unlink()
-
-        league_vals = []
+        if not datas:
+            existing_leagues = self.env['fpl.leagues'].search([('manager_id', '=', manager_id), ('type', '=', type)])
+            if existing_leagues:
+                existing_leagues.active_phases_ids.unlink()
+                existing_leagues.unlink()
+            return []
+        
+        existing_leagues = {l.league_id: l for l in self.env['fpl.leagues'].search([('manager_id', '=', manager_id), ('type', '=', type)])}
+        
+        leagues_to_create = []
+        leagues_to_update = []
+        current_leagues = set()
+        
         for league in datas:
+            league_api_id = league.get('id')
+            current_leagues.add(league_api_id)
+            
             val = {
                 'type': type,
-                'league_id': league.get('id'),
+                'league_id': league_api_id,
                 'name': league.get('name'),
                 'short_name': league.get('short_name'),
                 'created': datetime.fromisoformat(league.get('created').replace('Z', '')),
@@ -1236,16 +534,113 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                 'entry_percentile_rank': league.get('entry_percentile_rank'),
                 'entry_rank': league.get('entry_rank'),
                 'entry_last_rank': league.get('entry_last_rank'),
-                'active_phases_ids': self._get_league_phases_val(league.get('active_phases')),
-                'entry_rank': league.get('entry_rank'),
-                'entry_last_rank': league.get('entry_last_rank'),
+                'manager_id': manager_id,
             }
-            league_vals.append(val)
-        if league_vals:
-            league_ids = self.env['fpl.leagues'].create(league_vals)
-            return league_ids.ids
+            
+            existing_league = existing_leagues.get(league_api_id)
+            if existing_league:
+                needs_update = False
+                for key, new_val in val.items():
+                    if key != 'manager_id' and hasattr(existing_league, key) and getattr(existing_league, key) != new_val:
+                        needs_update = True
+                        break
                 
-    
+                if needs_update:
+                    leagues_to_update.append((existing_league, val, league.get('active_phases')))
+                else:
+                    leagues_to_update.append((existing_league, {}, league.get('active_phases')))
+            else:
+                val['active_phases_ids'] = self._get_league_phases_val(league.get('active_phases'))
+                leagues_to_create.append(val)
+        
+        obsolete_leagues = [league for league_id, league in existing_leagues.items() if league_id not in current_leagues]
+        if obsolete_leagues:
+            for league in obsolete_leagues:
+                league.active_phases_ids.unlink()
+                league.unlink()
+        
+        updated_league_ids = []
+        for league, vals, active_phases in leagues_to_update:
+            if vals:
+                league.write(vals)
+            
+            if active_phases is not None:
+                league.active_phases_ids.unlink()
+                new_phases = self._get_league_phases_val(active_phases)
+                if new_phases:
+                    phase_records = self.env['fpl.league.active.phases'].create([vals for _, _, vals in new_phases])
+                    league.write({'active_phases_ids': [(6, 0, phase_records.ids)]})
+            
+            updated_league_ids.append(league.id)
+        
+        if leagues_to_create:
+            created_leagues = self.env['fpl.leagues'].create(leagues_to_create)
+            return updated_league_ids + created_leagues.ids
+        else:
+            return updated_league_ids
+                
+    def _update_league_standings(self, league_phases):
+        try:
+            for leauge, active_phases in league_phases.items():
+                for phase in active_phases:
+                    existing_standings = {s.result_id: s for s in self.env['fpl.league.standings.results'].search([('league_id', '=', leauge.id), ('phase_id', '=', phase.id)])}
+                    
+                    leauge_standing_datas = self.sync_from_fpl_api('get_league_standings', league_id=leauge.league_id, phase=phase.phase_id.phase_id)
+                    standings = leauge_standing_datas.get('standings', {})
+                    results = standings.get('results', [])
+                    
+                    standings_to_create = []
+                    standings_to_update = []
+                    current_result_ids = set()
+                    
+                    for rs in results:
+                        result_id = rs.get('id')
+                        current_result_ids.add(result_id)
+                        
+                        standing_vals = rs.copy()
+                        standing_vals.update({
+                            'result_id': result_id,
+                            'league_id': leauge.id,
+                            'phase_id': phase.phase_id.id,
+                        })
+                        standing_vals.pop('id')
+                        
+                        existing_standing = existing_standings.get(result_id)
+                        if existing_standing:
+                            needs_update = False
+                            for key, new_val in standing_vals.items():
+                                if hasattr(existing_standing, key) and getattr(existing_standing, key) != new_val:
+                                    needs_update = True
+                                    break
+                            if needs_update:
+                                standings_to_update.append((existing_standing, standing_vals))
+                        else:
+                            standings_to_create.append(standing_vals)
+                    
+                    obsolete_standings = [s for result_id, s in existing_standings.items() if result_id not in current_result_ids]
+                    if obsolete_standings:
+                        for s in obsolete_standings:
+                            s.unlink()
+                    
+                    for standing, vals in standings_to_update:
+                        standing.write(vals)
+                    
+                    if standings_to_create:
+                        self.env['fpl.league.standings.results'].create(standings_to_create)
+                    
+                    if leauge_standing_datas.get('last_updated_data'):
+                        leauge.write({'last_updated_data': datetime.fromisoformat(leauge_standing_datas.get('last_updated_data').replace('Z', ''))})
+
+       
+        except FPLApiException as e:
+                _logger.error(f"Failed to sync league standings data: {str(e)}")
+                raise UserError(f"Failed to sync league standings data: {str(e)}")
+        except Exception as e:
+                _logger.error(f"Unexpected error during sync: {str(e)}")
+                raise UserError(f"Unexpected error during sync: {str(e)}")
+
+
+
     def _get_league_phases_val(self, phases):
         val = []
         for phase in phases:

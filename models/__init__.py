@@ -12,3 +12,8 @@ from . import fpl_manager_chips
 from . import fpl_event_chip_plays
 from . import fpi_import_data
 from . import fpl_league_active_phases
+from . import fpl_entry_history
+from . import fpl_past
+from . import fpl_gameweek_fixtures
+from . import fpl_stats
+from . import fpl_league_standings_results

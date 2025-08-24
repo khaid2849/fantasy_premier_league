@@ -12,7 +12,7 @@
         It also allows you to import your FPL team from the FPL website.
     """,
     'website': 'https://www.fantasypremierleague.com/',
-    'depends': ['base'],
+    'depends': ['base', 'mail'],
     'data': [
         'security/ir.model.access.csv',
 
@@ -21,9 +21,12 @@
         'views/fpl_manager_team_view.xml',
         'views/fpl_teams_view.xml',
         'views/fpl_elements_view.xml',
+        'views/fpl_gameweek_fixtures_view.xml',
+        'views/fpl_leagues_view.xml',
         'views/menu.xml',
 
-        'wizards/views/fpl_manager_team_wizard_view.xml'
+        'wizards/views/fpl_manager_team_wizard_view.xml',
+        'wizards/views/fpl_manager_team_history_wizard_view.xml',
     ],
     'demo': [],
     'installable': True,
@@ -31,8 +34,8 @@
     'icon': '/fantasy_premier_league/static/description/icon.png',
     'assets': {
         'web.assets_backend': [
-            '/fantasy_premier_league/static/src/js/manager_team_list_button.js',
-            '/fantasy_premier_league/static/src/xml/manager_team_list_button.xml',
+            '/fantasy_premier_league/static/src/js/*.js',
+            '/fantasy_premier_league/static/src/xml/*.xml',
         ]
     },
 }

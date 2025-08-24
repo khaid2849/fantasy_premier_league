@@ -84,6 +84,4 @@ class FPLApiMixin(models.AbstractModel):
             raise
         except AttributeError:
             _logger.error(f"Unknown API method: {endpoint_method}")
-            raise ValueError(f"Unknown API method: {endpoint_method}")
-    
-    
+            raise ValueError(f"Unknown API method: {endpoint_method}")          

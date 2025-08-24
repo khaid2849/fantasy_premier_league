@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fpl_gameweek_fixtures_form" model="ir.ui.view">
+        <field name="name">fpl.gameweek.fixtures.form</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <form string="Premier League Fixture" create="0" delete="0" edit="0">
+                <sheet>
+                    <field name="finished" invisible="1"/>
+                    <field name="started" invisible="1"/>
+                    <field name="team_h_code" invisible="1"/>
+                    <field name="team_a_code" invisible="1"/>
+                    <widget name="web_ribbon" title="Full time" bg_color="text-bg-success" invisible="not finished"/>
+                    <widget name="web_ribbon" title="Live" bg_color="text-bg-danger" invisible="finished or not started"/>
+                    
+                    <!-- <div class="oe_button_box" name="button_box">
+                
+                        <button type="object" name="action_open_players_statistics" class="oe_stat_button" icon="fa-bar-chart">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Players Statistics</span>
+                            </div>
+                        </button>
+                    </div> -->
+
+                    <div class="oe_title" style="text-align: center; padding: 20px 0;">
+                        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                            <div style="display: flex; flex-direction: column; align-items: center; margin: 0 30px;">
+                                <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid #E8E8E8; display: flex; align-items: center; justify-content: center; background: #F8F9FA; margin-bottom: 10px;">
+                                    <field name="team_h_photo" widget="image"/>
+                                </div>
+                                <h2 style="margin: 0; color: #2C3E50;">
+                                    <field name="team_h" readonly="1"/>
+                                </h2>
+                                <small style="color: #7F8C8D;">Home</small>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; align-items: center; margin: 0 40px;">
+                                <div invisible="not started" style="font-size: 3em; font-weight: bold; color: #875A7B; display: flex; align-items: center;">
+                                    <field name="team_h_score" readonly="1" nolabel="1" style="min-width: 60px; text-align: center;"/>
+                                    <span style="margin: 0 20px; color: #BDC3C7;">-</span>
+                                    <field name="team_a_score" readonly="1" nolabel="1" style="min-width: 60px; text-align: center;"/>
+                                </div>
+                                <div invisible="started" style="font-size: 1.5em; font-weight: bold; color: #34495E; padding: 15px 25px; background: #ECF0F1; border-radius: 25px;">
+                                    <field name="kickoff_time" readonly="1" widget="datetime" options="{'format': 'HH:mm'}"/>
+                                </div>
+                                <div style="margin-top: 10px; font-size: 14px; color: #7F8C8D;">
+                                    <span invisible="not finished">Full Time</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; align-items: center; margin: 0 30px;">
+                                <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid #E8E8E8; display: flex; align-items: center; justify-content: center; background: #F8F9FA; margin-bottom: 10px;">
+                                    <field name="team_a_photo" widget="image"/>
+                                </div>
+                                <h2 style="margin: 0; color: #2C3E50;">
+                                    <field name="team_a" readonly="1"/>
+                                </h2>
+                                <small style="color: #7F8C8D;">Away</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <group>
+                        <group string="Home">
+                            <field name="team_h_score" readonly="1" string="Goals"/>
+                            <field name="team_h_difficulty" readonly="1" string="Difficulty Rating"/>
+                        </group>
+                        <group string="Away">
+                            <field name="team_a_score" readonly="1" string="Goals"/>
+                            <field name="team_a_difficulty" readonly="1" string="Difficulty Rating"/>
+                        </group>
+                    </group>
+
+                    <group string="Players Statistics"/>
+                    <notebook>
+                        <page string="Goals &amp; Assists">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <group style="color: #27AE60;" string="Home Team Goals"/>
+                                    <field name="team_h_goals_scored_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Goals"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #3498DB;" string="Home Team Assists"/>
+                                    <field name="team_h_assists_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Assists"/>
+                                        </list>
+                                    </field>
+                                </div>
+                                <div class="col-md-6">
+                                    <group style="color: #27AE60;" string="Away Team Goals"/>
+                                    <field name="team_a_goals_scored_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Goals"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #3498DB;" string="Away Team Assists"/>
+                                    <field name="team_a_assists_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Assists"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <page string="Cards &amp; Disciplinary">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <group style="color: #F39C12;" string="Home Team Yellow Cards"/>
+                                    <field name="team_h_yellow_cards_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Yellow Cards"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #E74C3C;" string="Home Team Red Cards"/>
+                                    <field name="team_h_red_cards_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Red Cards"/>
+                                        </list>
+                                    </field>
+                                </div>
+                                <div class="col-md-6">
+                                    <group style="color: #F39C12;" string="Away Team Yellow Cards"/>
+                                    <field name="team_a_yellow_cards_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Yellow Cards"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #E74C3C;" string="Away Team Red Cards"/>
+                                    <field name="team_a_red_cards_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Red Cards"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <page string="Goalkeeping &amp; Saves">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <group style="color: #9B59B6;" string="Home Team Saves"/>
+                                    <field name="team_h_saves_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Saves"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #44ad90;" string="Home Team Penalties Saved"/>
+                                    <field name="team_h_penalties_saved_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Penalties Saved"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #d75639;" string="Home Team Penalties Missed"/>
+                                    <field name="team_h_penalties_missed_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Saves"/>
+                                        </list>
+                                    </field>
+                                </div>
+                                <div class="col-md-6">
+                                    <group style="color: #9B59B6;" string="Away Team Saves"/>
+                                    <field name="team_a_saves_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Saves"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #44ad90;" string="Away Team Penalties Saved"/>
+                                    <field name="team_a_penalties_saved_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Penalties Saved"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #d75639;" string="Away Team Penalties Missed"/>
+                                    <field name="team_a_penalties_missed_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Saves"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <page string="Bonus Points &amp; Performance">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <group style="color: #16A085;" string="Home Team Bonus Points"/>
+                                    <field name="team_h_bonus_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Bonus Points"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #2ECC71;" string="Home Team BPS"/>
+                                    <field name="team_h_bps_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="BPS"/>
+                                        </list>
+                                    </field>
+                                </div>
+                                <div class="col-md-6">
+                                    <group style="color: #16A085;" string="Away Team Bonus Points"/>
+                                    <field name="team_a_bonus_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="Bonus Points"/>
+                                        </list>
+                                    </field>
+                                    <group style="color: #2ECC71;" string="Away Team BPS"/>
+                                    <field name="team_a_bps_ids" widget="one2many" readonly="1">
+                                        <list>
+                                            <field name="element_id" column_invisible="1" string="Player"/>
+                                            <field name="web_name"  string="Player"/>
+                                            <field name="value" string="BPS"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
+                        </page>
+                    </notebook>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_fpl_gameweek_fixtures_kanban" model="ir.ui.view">
+        <field name="name">fpl.gameweek.fixtures.kanban</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard" default_group_by="gameweek" create="0" delete="0" edit="0" js_class="fpl_kanban_view_custom_hide_search">
+                <field name="gameweek"/>
+                <field name="team_h"/>
+                <field name="team_a"/>
+                <field name="team_h_code"/>
+                <field name="team_a_code"/>
+                <field name="team_h_score"/>
+                <field name="team_a_score"/>
+                <field name="kickoff_time"/>
+                <field name="minutes"/>
+                <field name="finished"/>
+                <field name="started"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 5px; padding: 0; position: relative;">
+                            <t t-if="record.finished.raw_value">
+                                <div class="ribbon-corner" style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-left: 50px solid transparent; border-top: 50px solid #27AE60; z-index: 10;">
+                                    <span style="position: absolute; top: -39px; right: 8px; transform: rotate(45deg); color: white; font-size: 11px; font-weight: bold; white-space: nowrap;">FT</span>
+                                </div>
+                            </t>
+                            <t t-elif="record.started.raw_value">
+                                <div class="ribbon-corner" style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-left: 50px solid transparent; border-top: 50px solid #E60023; z-index: 10;">
+                                    <span style="position: absolute; top: -39px; right: 8px; transform: rotate(45deg); color: white; font-size: 11px; font-weight: bold; white-space: nowrap;">LIVE</span>
+                                </div>
+                            </t>
+                            
+                            <!-- Match Status Header -->
+                            <div t-attf-class="o_kanban_record_top" 
+                                    style="background: #{record.finished.raw_value ? '#2ECC71' : (record.started.raw_value ? '#F39C12' : '#34495E')}; 
+                                        color: white; padding: 8px 12px; border-radius: 8px 8px 0 0; text-align: center; font-weight: bold;">
+                                <t t-if="record.finished.raw_value">
+                                    <span>FT</span>
+                                </t>
+                                <t t-elif="record.started.raw_value">
+                                    <span><t t-esc="record.minutes.value"/>'</span>
+                                </t>
+                                <t t-else="">
+                                    <span t-esc="luxon.DateTime.fromISO(record.kickoff_time.raw_value).toFormat('HH:mm')"/>
+                                </t>
+                            </div>
+                            
+                            <!-- Teams and Score -->
+                            <div style="padding: 15px; background: white;">
+                                <!-- Team Images with Score in Between -->
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <!-- Home Team Image and Name -->
+                                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                                        <div style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; border: 2px solid #E8E8E8; display: flex; align-items: center; justify-content: center; background: #F8F9FA;">
+                                            <img t-attf-src="/fantasy_premier_league/static/src/img/{{record.team_h_code.value}}.png" 
+                                                        style="width: 100%; height: 100%; object-fit: cover;" 
+                                                        t-att-alt="record.team_h.value"/>
+                                        </div>
+                                        <div style="margin-top: 8px; text-align: center;">
+                                            <strong style="font-size: 12px; color: #2C3E50;">
+                                                <field name="team_h" readonly="1"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Match Score or Kickoff Time -->
+                                    <div style="display: flex; flex-direction: column; align-items: center; margin: 0 15px;">
+                                        <t t-if="record.started.raw_value">
+                                            <!-- Show score for started matches -->
+                                            <div style="font-size: 24px; font-weight: bold; color: #875A7B; display: flex; align-items: center;">
+                                                <span style="min-width: 30px; text-align: center;">
+                                                    <t t-if="record.team_h_score.raw_value !== null">
+                                                        <t t-esc="record.team_h_score.value"/>
+                                                    </t>
+                                                    <t t-else="">0</t>
+                                                </span>
+                                                <span style="margin: 0 8px; color: #BDC3C7;">:</span>
+                                                <span style="min-width: 30px; text-align: center;">
+                                                    <t t-if="record.team_a_score.raw_value !== null">
+                                                        <t t-esc="record.team_a_score.value"/>
+                                                    </t>
+                                                    <t t-else="">0</t>
+                                                </span>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <!-- Show kickoff time for unstarted matches -->
+                                            <div style="font-size: 18px; font-weight: bold; color: #34495E; padding: 8px 16px; background: #ECF0F1; border-radius: 20px;">
+                                                <t t-esc="luxon.DateTime.fromISO(record.kickoff_time.raw_value).toFormat('HH:mm')"/>
+                                            </div>
+                                        </t>
+                                    </div>
+                                    
+                                    <!-- Away Team Image and Name -->
+                                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                                        <div style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; border: 2px solid #E8E8E8; display: flex; align-items: center; justify-content: center; background: #F8F9FA;">
+                                            <img t-attf-src="/fantasy_premier_league/static/src/img/{{record.team_a_code.value}}.png" 
+                                                        style="width: 100%; height: 100%; object-fit: cover;" 
+                                                        t-att-alt="record.team_a.value"/>
+                                        </div>
+                                        <div style="margin-top: 8px; text-align: center;">
+                                            <strong style="font-size: 12px; color: #2C3E50;">
+                                                <field name="team_a" readonly="1"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Match Details Footer -->
+                            <div style="background: #ECF0F1; padding: 8px 12px; border-radius: 0 0 8px 8px; font-size: 12px; color: #7F8C8D;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>
+                                        <t t-esc="luxon.DateTime.fromISO(record.kickoff_time.raw_value).toFormat('d MMM yyyy')"/>
+                                    </span>
+                                    <span>GW <t t-esc="record.gameweek.value"/></span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_fpl_gameweek_fixtures_search" model="ir.ui.view">
+        <field name="name">fpl.gameweek.fixtures.search</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <search string="Premier League Fixtures">
+                <field name="team_h" string="Home Team"/>
+                <field name="team_a" string="Away Team"/>
+                <field name="gameweek"/>
+                <field name="event_id"/>
+                <separator/>
+                <filter string="Finished" name="finished" domain="[('finished', '=', True)]"/>
+                <filter string="Live" name="live" domain="[('started', '=', True), ('finished', '=', False)]"/>
+                <filter string="Upcoming" name="upcoming" domain="[('started', '=', False)]"/>
+                <separator/>
+                <filter string="Today" name="today" domain="[('kickoff_time', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('kickoff_time', '&lt;', datetime.datetime.combine(context_today() + datetime.timedelta(days=1), datetime.time(0,0,0)))]"/>
+                <filter string="This Week" name="this_week" domain="[('kickoff_time', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')), ('kickoff_time', '&lt;', (context_today() + datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Gameweek" name="group_by_gameweek" domain="[]" context="{'group_by': 'gameweek'}"/>
+                    <filter string="Date" name="group_by_date" domain="[]" context="{'group_by': 'kickoff_time:day'}"/>
+                    <filter string="Status" name="group_by_status" domain="[]" context="{'group_by': 'finished'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="fpl_gameweek_fixtures_view_action" model="ir.actions.act_window">
+        <field name="name">Premier League Fixtures</field>
+        <field name="res_model">fpl.gameweek.fixtures</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="context">{'search_default_group_by_gameweek': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Premier League fixtures found!
+            </p>
+            <p>
+                Premier League fixtures will be automatically synced from the FPL API.
+            </p>
+        </field>
+    </record>
+</odoo>

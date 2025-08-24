@@ -1,6 +1,6 @@
 from odoo import models, fields, api, _
 
-class FPLManagerTeamWizard(models.TransientModel):
+class FplManagerTeamWizard(models.TransientModel):
     _name = 'fpl.manager.team.wizard'
     _description = 'FPL Manager Team Wizard'
 
@@ -42,7 +42,8 @@ The number after /entry/ and before /event/ (in this case, 1234567) is your FPL 
                     'title': _('Success'),
                     'message': _('Manager team data has been successfully synced from FPL API for Manager ID: %s') % manager_team.manager_id,
                     'type': 'success',
-                }
+                    'next': {'type': 'ir.actions.act_window_close'},
+                },
             }
             
         except Exception as e:

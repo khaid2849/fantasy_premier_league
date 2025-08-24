@@ -7,7 +7,7 @@
             <form string="FPL Manager Team Wizard">
                 <sheet>
                     <group>
-                        <field name="manager_id" required="1"/>
+                        <field name="manager_id" required="1" readonly="context.get('is_readonly')"/>
                         <field name="cookies" required="1"/>
                         <field name="x_api_authorization" required="1" password="True"/>
                     </group>

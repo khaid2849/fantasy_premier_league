@@ -21,24 +21,89 @@
         <field name="model">fpl.manager.team</field>
         <field name="arch" type="xml">
             <form string="Manager Team" delete="0" create="0" edit="0">
+                <header>
+                    <button string="Verify Manager Data" class="btn-primary" type="object" name="action_verify_manager_data"/>
+                </header>
                 <sheet>
-                    <!-- <div class="oe_button_box" name="button_box">
-                        <button type="object"
-                                name="action_open_chip_bench_boost"
-                                invisible="not used_bench_boost"
-                                class="oe_stat_button" icon="fa-cubes">
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" disabled="disabled" special="cancel" 
+                                invisible="used_wildcard"
+                                class="oe_stat_button" icon="fa-exchange">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">
-                                    <field name="status_for_entry" nolabel="1" class="oe_inline"/>
-                                </span>
+                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_text">Wildcard</span>
+                            </div>
+                        </button>
+                        <button type="object" disabled="disabled" special="cancel"
+                                invisible="used_free_hit"
+                                class="oe_stat_button" icon="fa-random">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_text">Free Hit</span>
+                            </div>
+                        </button>
+                            <button type="object" disabled="disabled" special="cancel"
+                                invisible="used_bench_boost"
+                                class="oe_stat_button" icon="fa-rocket">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Used</span>
                                 <span class="o_stat_text">Bench Boost</span>
                             </div>
                         </button>
-                    </div> -->
+                            <button type="object" disabled="disabled" special="cancel"
+                                invisible="used_triple_captain"
+                                class="oe_stat_button" icon="fa-bars">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_text">Triple Captain</span>
+                            </div>
+                        </button>
+
+                        <button type="object" disabled="disabled" special="cancel"
+                                invisible="not used_wildcard"
+                                class="oe_stat_button" icon="fa-exchange">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Not Used</span>
+                                <span class="o_stat_text">Wildcard</span>
+                            </div>
+                        </button>
+                        <button type="object" disabled="disabled" special="cancel"
+                                invisible="not used_free_hit"
+                                class="oe_stat_button" icon="fa-random">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Not Used</span>
+                                <span class="o_stat_text">Free Hit</span>
+                            </div>
+                        </button>
+                            <button type="object" disabled="disabled" special="cancel"
+                                invisible="not used_bench_boost"
+                                class="oe_stat_button" icon="fa-rocket">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Not Used</span>
+                                <span class="o_stat_text">Bench Boost</span>
+                            </div>
+                        </button>
+                        <button type="object" disabled="disabled" special="cancel"
+                                invisible="not used_triple_captain"
+                                class="oe_stat_button" icon="fa-bars">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value d-flex gap-1">Not Used</span>
+                                <span class="o_stat_text">Triple Captain</span>
+                            </div>
+                        </button>
+
+                        <button type="object" name="action_open_entry_history" class="oe_stat_button" icon="fa-book">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Manager History</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title mb24">
                         <h1>
                             <field name="name" class="text-break" default_focus="1"/>
-                            <field name="manager_id" class="text-muted fst-italic"/>
+                            <h5>
+                                <field name="manager_id" class="text-muted fst-italic"/>
+                            </h5>
                         </h1>
                         <div class="o_row me-3">
                             <field name="full_name"/>
@@ -67,8 +132,9 @@
                             <field name="summary_overall_rank"/>
                         </group>
                         <group>
-                            <field name="summary_event_points"/>
-                            <field name="summary_event_rank"/>
+                            <field name="current_event"/>
+                            <field name="summary_event_points" string="Current Gameweek points"/>
+                            <field name="summary_event_rank" string="Current Gameweek rank"/>
                         </group>
                     </group>
                     
@@ -100,48 +166,54 @@
                                 </list>
                             </field>
                         </page>
-                        
-
                         <page string="Chips">
-                            <field name="manager_chip_ids" nolabel="1">
+                            <field name="manager_chip_ids" nolabel="1" options="{'no_open': True}">
                                 <list>
                                     <field name="chip_id" column_invisible="1"/>
                                     <field name="show_name"/>
-                                    <field name="is_pending" string="Pending"/>
+                                    <field name="played_by_entry" optional="hide"/>
+                                    <field name="number" optional="hide"/>
+                                    <field name="start_event" optional="hide"/>
+                                    <field name="stop_event" optional="hide"/>
+                                    <field name="chip_type" optional="hide"/>
                                     <field name="status_for_entry" widget="badge"
                                         decoration-success="status_for_entry == 'available'"
-                                        decoration-danger="status_for_entry == 'used'"
-                                    />
+                                        decoration-danger="status_for_entry == 'used'"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
 
-                    <separator/>
-
                     <group string="Leagues">
-                    <notebook> 
-                        <page string="Classic">
-                            <field name="league_classic_ids" nolabel="1" domain="[('type', '=', 'classic')]">
-                                <list>
-                                    <field name="name"/>
-                                    <field name="entry_rank"/>
-                                    <field name="overall_points"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="H2H"> 
-                            <field name="league_h2h_ids" nolabel="1" domain="[('type', '=', 'h2h')]">
-                                <list>
-                                    <field name="name"/>
-                                    <field name="entry_rank"/>
-                                </list>
+                        <notebook> 
+                            <page string="Classic">
+                                <field name="league_classic_ids" nolabel="1" domain="[('type', '=', 'classic')]">
+                                    <list default_order="league_id asc">
+                                        <field name="league_id" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="entry_rank" column_invisible="1"/>
+                                        <field name="entry_rank_form"/>
+                                        <field name="entry_last_rank"/>
+                                        <field name="overall_points"/>
+                                    </list>
                                 </field>
-                            </page> 
+                            </page>
+                            <page string="H2H"> 
+                                <field name="league_h2h_ids" nolabel="1" domain="[('type', '=', 'h2h')]">
+                                    <list default_order="league_id asc">
+                                        <field name="league_id" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="entry_rank" column_invisible="1"/>
+                                        <field name="entry_rank_form"/>
+                                        <field name="entry_last_rank"/>
+                                    </list>
+                                    </field>
+                                </page> 
                         </notebook>
                     </group>
 
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -149,6 +221,9 @@
     <record id="fpl_manager_team_view_action" model="ir.actions.act_window">
         <field name="name">FPL Manager Team</field>
         <field name="res_model">fpl.manager.team</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('fantasy_premier_league.fpl_manager_team_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('fantasy_premier_league.fpl_manager_team_form')})]"/>
         <field name="view_mode">list,form</field>
     </record>
 </odoo>

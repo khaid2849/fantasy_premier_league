@@ -9,4 +9,15 @@
         <field name="active">False</field>
     </record>
 
+    <record id="ir_cron_get_gameweek_fixtures" model="ir.cron">
+        <field name="name">Cron Get Gameweek Fixutres Data API</field>
+        <field name="model_id" ref="fantasy_premier_league.model_fpl_gameweek_fixtures"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_get_data_gameweek_fixutres()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
 </odoo>

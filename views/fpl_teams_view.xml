@@ -222,7 +222,7 @@
         <field name="name">fpl.teams.tree</field>
         <field name="model">fpl.teams</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0" default_order="position asc" string="Table">
+            <list create="0" edit="0" delete="0" default_order="position asc" string="Table" js_class="fpl_list_view_custom_hide_search">
                 <field name="position" widget="handle"/>
                 <field name="photo" widget="image" options="{'size': [40, 40]}"/>
                 <field name="name"/>

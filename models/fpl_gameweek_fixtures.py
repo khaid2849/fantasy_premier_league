@@ -61,31 +61,6 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         for rec in self:
             rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name} vs {rec.team_a.name}'
 
-    def action_open_players_statistics(self):
-        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_stats_wizard_action')
-        action.update({
-                'context': {
-                    'default_team_h_goals_scored_ids': self.team_h_goals_scored_ids.ids,
-                    'default_team_h_assists_ids': self.team_h_assists_ids.ids,
-                    'default_team_a_goals_scored_ids': self.team_a_goals_scored_ids.ids,
-                    'default_team_a_assists_ids': self.team_a_assists_ids.ids,
-                    'default_team_h_yellow_cards_ids': self.team_h_yellow_cards_ids.ids,
-                    'default_team_h_red_cards_ids': self.team_h_red_cards_ids.ids,
-                    'default_team_a_yellow_cards_ids': self.team_a_yellow_cards_ids.ids,
-                    'default_team_a_red_cards_ids': self.team_a_red_cards_ids.ids,
-                    'default_team_h_saves_ids': self.team_h_saves_ids.ids,
-                    'default_team_a_penalties_saved_ids': self.team_a_penalties_saved_ids.ids,
-                    'default_team_a_saves_ids': self.team_a_saves_ids.ids,
-                    'default_team_h_penalties_saved_ids': self.team_h_penalties_saved_ids.ids,
-                    'default_team_h_bonus_ids': self.team_h_bonus_ids.ids,
-                    'default_team_h_bps_ids': self.team_h_bps_ids.ids,
-                    'default_team_a_bonus_ids': self.team_a_bonus_ids.ids,
-                    'default_team_a_bps_ids': self.team_a_bps_ids.ids,
-                },
-            }
-        )
-        return action
-
     def cron_get_data_gameweek_fixutres(self):
         try:
             for gameweek in range(1, 39):

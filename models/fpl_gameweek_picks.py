@@ -11,9 +11,8 @@ _logger = logging.getLogger(__name__)
 class FplGameweekPicks(models.Model, FPLApiMixin):
     _name = 'fpl.gameweek.picks'
     _description = 'FPL Gameweek Picks'
-
-    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string=_('Gameweek Fixture'))
-    element_id = fields.Many2one('fpl.elements', string=_('Player'))
+    
+    manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))
     event_id = fields.Many2one('fpl.events', string=_('Event'))
     points = fields.Integer(string=_('Points'))
     total_points = fields.Integer(string=_('Total Points'))

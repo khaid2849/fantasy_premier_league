@@ -1,0 +1,17 @@
+// Hide the fold/unfold button completely with CSS
+.o_hierarchy_node_container {
+    // Hide any remaining fold/unfold buttons
+    .o_hierarchy_node_button {
+        display: none !important;
+    }
+    
+    // Ensure the node appears as folded
+    .o_hierarchy_node {
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+    
+    // Hide the button container if it still exists
+    button[name="hierarchy_search_subsidiaries"] {
+        display: none !important;
+    }
+}

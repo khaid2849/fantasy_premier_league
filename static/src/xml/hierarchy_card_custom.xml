@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<templates>
+    <!-- Override the hierarchy card template to hide the fold/unfold button -->
+    <t t-name="web_hierarchy.HierarchyCard" t-inherit="web_hierarchy.HierarchyCard" t-inherit-mode="extension">
+        
+        <!-- Hide the fold/unfold button by replacing it with an empty template -->
+        <xpath expr="//button[@name='hierarchy_search_subsidiaries']" position="replace">
+            <!-- Button is completely removed -->
+        </xpath>
+        
+    </t>
+</templates>

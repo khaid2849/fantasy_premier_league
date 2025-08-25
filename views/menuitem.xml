@@ -6,6 +6,8 @@
     <menuitem id="menu_fpl_manager_team_root" name="Your FPL Team" parent="menu_fpl_root" sequence="1"/>
     <menuitem id="menu_fpl_manager_team" name="Manager Team" parent="menu_fpl_manager_team_root" sequence="1" action="fantasy_premier_league.fpl_manager_team_view_action"/>
     <menuitem id="menu_fpl_league_standings" name="League Standings" parent="menu_fpl_manager_team_root" sequence="2" action="fantasy_premier_league.fpl_leagues_view_action"/>
+    <menuitem id="menu_fpl_gameweek_picks" name="Gameweek Picks" parent="menu_fpl_manager_team_root" sequence="3" action="fantasy_premier_league.fpl_gameweek_pick_lines_view_action"/>
+
 
     <menuitem id="menu_fpl_table" name="Table" parent="menu_fpl_root" sequence="4" action="fantasy_premier_league.fpl_table_view_action"/>
     <menuitem id="menu_fpl_gameweek_fixtures" name="Fixtures" parent="menu_fpl_root" action="fantasy_premier_league.fpl_gameweek_fixtures_view_action" sequence="5"/>

@@ -17,3 +17,5 @@ from . import fpl_past
 from . import fpl_gameweek_fixtures
 from . import fpl_stats
 from . import fpl_league_standings_results
+from . import fpl_gameweek_picks
+from . import fpl_gameweek_pick_lines

@@ -159,7 +159,7 @@ class FplImportData(models.Model, FPLApiMixin):
     
     def _get_team_photo_png(self, team_code):            
         try:
-            team_photo_file = file_path(f'fantasy_premier_league/static/src/img/{team_code}.png')
+            team_photo_file = file_path(f'fantasy_premier_league/static/src/img/teams_logo/{team_code}.png')
             if not team_photo_file:
                 _logger.warning(f"Team photo file not found for code: {team_code}")
                 return False

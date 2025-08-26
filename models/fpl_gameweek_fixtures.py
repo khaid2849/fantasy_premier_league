@@ -25,8 +25,8 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h = fields.Many2one('fpl.teams', string=_('Home team'))
     team_a_code = fields.Char()
     team_h_code = fields.Char()
-    team_a_photo = fields.Image(realted='team_a.photo')
-    team_h_photo = fields.Image(realted='team_h.photo')
+    team_a_photo = fields.Image()
+    team_h_photo = fields.Image()
     team_a_score = fields.Integer(string=_('Away Team Score'))
     team_h_score = fields.Integer(string=_('Home Team Score'))
     team_a_difficulty = fields.Integer(string=_('Away Team Difficulty'))
@@ -128,6 +128,8 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
             'team_h_difficulty': data.get('team_h_difficulty'),
             'team_a_difficulty': data.get('team_a_difficulty'),
             'pulse_id': data.get('pulse_id'),
+            'team_a_photo': team_a_id.photo,
+            'team_h_photo': team_h_id.photo,
         }
         return val
     

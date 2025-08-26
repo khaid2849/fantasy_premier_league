@@ -112,7 +112,7 @@
     background-repeat: no-repeat;
     border-radius: 12px;
     padding: 30px 20px;
-    height: max-content;
+    height: 1000px;
     position: relative;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     border: 3px solid #ffffff;
@@ -222,6 +222,17 @@
     text-transform: uppercase;
 }
 
+.player-total-points {
+    border-radius: 0 0 0.3rem 0.3rem;
+    background-color: #37003c;
+    padding: 0.25rem;
+    text-align: center;
+    line-height: 1;
+    color: #fff;
+    font-size: 0.7rem;
+    font-family: "PremierSans-Bold", Arial, "Helvetica Neue", Helvetica, "sans-seriff";
+}
+
 .player-multiplier {
     background: #000000;
     color: white;
@@ -238,7 +249,7 @@
 
 /* Position-specific styling */
 .goalkeeper .player-jersey {
-    background: #00b894;
+    background: #705f00;
 }
 
 .defender .player-jersey {
@@ -262,9 +273,8 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     flex-shrink: 0;
     width: 280px;
-    height: max-content;
+    height: 1000px;
     justify-items: center;
-    // margin-top: 55px;
 }
 
 .substitutes-bench h4 {
@@ -289,8 +299,11 @@
 }
 
 .substitute-card {
-    opacity: 0.8;
     transform: scale(0.9);
+    background-color: #37003c3d;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
 }
 
 .substitute-jersey {
@@ -355,6 +368,12 @@
     border-width: 1px;
 }
 
+.position-text {
+   margin-left: 35%;
+   color: #000000;
+   font-family: "PremierSans-Regular", Arial, "Helvetica Neue", Helvetica, "sans-serif";
+   font-weight: bold;
+}
 /* Responsive Design */
 @media (max-width: 768px) {
     .fpl-formation-controls {
@@ -441,10 +460,6 @@
     }
 }
 
-/* Animation for captain and vice-captain */
-.player-multiplier {
-    animation: pulse 2s infinite;
-}
 
 @keyframes pulse {
     0% {

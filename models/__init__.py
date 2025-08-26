@@ -15,7 +15,9 @@ from . import fpl_league_active_phases
 from . import fpl_entry_history
 from . import fpl_past
 from . import fpl_gameweek_fixtures
-from . import fpl_stats
+from . import fpl_team_stats
 from . import fpl_league_standings_results
 from . import fpl_gameweek_picks
 from . import fpl_gameweek_pick_lines
+from . import fpl_element_stats
+from . import master_data

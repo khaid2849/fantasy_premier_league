@@ -1,3 +1,5 @@
+from odoo import _
+
 REGIONS = [
     {
         "id": 1,
@@ -1785,3 +1787,35 @@ REGIONS = [
         "iso_code_long": "RKS"
     }
 ]
+
+
+MAPPING_SELECTIONS_DATA = {
+    "element_stats" : [
+        ('minutes', _('Minutes played')),
+        ('goals_scored', _('Goals scored')),
+        ('assists', _('Assists')),
+        ('clean_sheets', _('Clean sheets')),
+        ('goals_conceded', _('Goals conceded')),
+        ('own_goals', _('Own goals')),
+        ('penalties_saved', _('Penalties saved')),
+        ('penalties_missed', _('Penalties missed')),
+        ('yellow_cards', _('Yellow cards')),
+        ('red_cards', _('Red cards')),
+        ('saves', _('Saves')),
+        ('bonus', _('Bonus')),
+        ('bps', _('Bonus Points System')),
+        ('influence', _('Influence')),
+        ('creativity', _('Creativity')),
+        ('threat', _('Threat')),
+        ('ict_index', _('ICT Index')),
+        ('clearances_blocks_interceptions', _('Clearances, blocks and interceptions')),
+        ('recoveries', _('Recoveries')),
+        ('tackles', _('Tackles')),
+        ('defensive_contribution', _('Defensive Contribution')),
+        ('starts', _('Game(s) Started')),
+        ('expected_goals', _('Expected Goals')),
+        ('expected_assists', _('Expected Assists')),
+        ('expected_goal_involvements', _('Expected Goal Involvements')),
+        ('expected_goals_conceded', _('Expected Goals Conceded')),
+    ]
+}

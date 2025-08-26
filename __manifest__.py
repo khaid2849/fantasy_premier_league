@@ -27,6 +27,7 @@
 
         'wizards/views/fpl_manager_team_wizard_view.xml',
         'wizards/views/fpl_manager_team_history_wizard_view.xml',
+        'wizards/views/fpl_gameweek_pick_lines_wizard_view.xml',
     ],
     'demo': [],
     'installable': True,

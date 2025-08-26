@@ -18,170 +18,25 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
     is_vice_captain = fields.Boolean(string=_('Is Vice Captain'))
     element_type_id = fields.Many2one('fpl.element.types', string=_('Element Type'))
     team_id = fields.Many2one('fpl.teams', string=_('Team'))
-    team_name = fields.Char(related='team_id.name')
-    parent_id = fields.Many2one('fpl.gameweek.pick.lines', string=_('Parent'))
-    web_name = fields.Char(related='element_id.web_name')
+    team_code = fields.Char()
+    team_name = fields.Char()
+    total_points = fields.Integer(string=_('Total points'))
+    web_name = fields.Char()
     plural_name_short= fields.Char(related='element_type_id.plural_name_short')
-    child_ids = fields.One2many('fpl.gameweek.pick.lines', 'parent_id', string=_('Children'))
+    element_stats_ids = fields.One2many('fpl.element.stats', 'pick_line_id', string=_('Stats'))
+    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string=_('Gameweek Fixutre'))
+
 
     @api.model
     def sync_gameweek_picks(self, manager_team, gw):
         try:
-            exist_pick = self.env['fpl.gameweek.picks'].search([('manager_id', '=', manager_team.get('id')), ('event_id', '=', gw.get('id'))])
-            # if exist_pick and not gw.is_current:
-            if exist_pick:
+            if not gw.get('finished') and not gw.get('is_current') and not gw.get('is_previous') and not gw.get('is_next'):
                 return
+            exist_pick = self.env['fpl.gameweek.picks'].search([('manager_id', '=', manager_team.get('id')), ('event_id', '=', gw.get('id'))])
 
-            # if gw.is_current:
-                # gw_picks = manager_team.sync_from_fpl_api('get_gameweek_picks', team_id=manager_team.manager_id, gw_id=gw.event_id)
+            gw_picks = self.sync_from_fpl_api('get_gameweek_picks', team_id=manager_team.get('manager_id'), gw_id=gw.get('event_id'))
+            element_datas = self.sync_from_fpl_api('get_element_gameweek_live', gw_id=gw.get('event_id'))
 
-            gw_picks = {
-            "active_chip": None,
-            "automatic_subs": [
-                {
-                    "entry": 894358,
-                    "element_in": 568,
-                    "element_out": 235,
-                    "event": 2
-                }
-            ],
-            "entry_history": {
-                "event": 2,
-                "points": 47,
-                "total_points": 97,
-                "rank": 6465899,
-                "rank_sort": 6479547,
-                "overall_rank": 6131779,
-                "percentile_rank": 65,
-                "bank": 5,
-                "value": 1000,
-                "event_transfers": 0,
-                "event_transfers_cost": 0,
-                "points_on_bench": 10
-            },
-            "picks": [
-                {
-                    "element": 470,
-                    "position": 1,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 1
-                },
-                {
-                    "element": 261,
-                    "position": 2,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 2
-                },
-                {
-                    "element": 191,
-                    "position": 3,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 2
-                },
-                {
-                    "element": 505,
-                    "position": 4,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 2
-                },
-                {
-                    "element": 568,
-                    "position": 5,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 2
-                },
-                {
-                    "element": 449,
-                    "position": 6,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 3
-                },
-                {
-                    "element": 381,
-                    "position": 7,
-                    "multiplier": 2,
-                    "is_captain": True,
-                    "is_vice_captain": False,
-                    "element_type": 3
-                },
-                {
-                    "element": 299,
-                    "position": 8,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 3
-                },
-                {
-                    "element": 242,
-                    "position": 9,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 3
-                },
-                {
-                    "element": 283,
-                    "position": 10,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 4
-                },
-                {
-                    "element": 64,
-                    "position": 11,
-                    "multiplier": 1,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 4
-                },
-                {
-                    "element": 220,
-                    "position": 12,
-                    "multiplier": 0,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 1
-                },
-                {
-                    "element": 235,
-                    "position": 13,
-                    "multiplier": 0,
-                    "is_captain": False,
-                    "is_vice_captain": True,
-                    "element_type": 3
-                },
-                {
-                    "element": 575,
-                    "position": 14,
-                    "multiplier": 0,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 2
-                },
-                {
-                    "element": 252,
-                    "position": 15,
-                    "multiplier": 0,
-                    "is_captain": False,
-                    "is_vice_captain": False,
-                    "element_type": 4
-                }
-            ]
-        }
             entry_history = gw_picks.get('entry_history')
             gw_pick_lines = gw_picks.get('picks')
             gw_pick_val = {
@@ -206,17 +61,16 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
                 create_gw_pick = self.env['fpl.gameweek.picks'].create(gw_pick_val)
                 exist_pick = create_gw_pick
 
-            self._get_gw_picks_lines(gw_pick_lines, exist_pick)
+            self._get_gw_picks_lines(gw_pick_lines, exist_pick, element_datas.get('elements'))
 
         except FPLApiException as e:
-            _logger.error(f"Failed to sync manager data: {str(e)}")
-            raise UserError(f"Failed to sync manager data: {str(e)}")
+            _logger.error(f"Failed to sync gameweek picks data: {str(e)}")
+            raise UserError(f"Failed to sync gameweek picks data: {str(e)}")
         except Exception as e:
             _logger.error(f"Unexpected error during sync: {str(e)}")
             raise UserError(f"Unexpected error during sync: {str(e)}")
     
-    def _get_gw_picks_lines(self, picks, gw_pick):
-        line_vals =[]
+    def _get_gw_picks_lines(self, picks, gw_pick, element_datas):
         for pick in picks:
             element_id = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))])
             val = {
@@ -224,18 +78,43 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
                 'element_id': element_id.id,
                 'element_type_id': self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))]).id,
                 'team_id': element_id.fpl_team_id.id,
+                'team_code': element_id.fpl_team_id.code,
+                'team_name': element_id.fpl_team_id.name,
+                'web_name': element_id.web_name,
                 'position': pick.get('position'),
                 'multiplier': pick.get('multiplier'),
                 'is_captain': pick.get('is_captain'),
                 'is_vice_captain': pick.get('is_vice_captain'),
+                'gameweek_pick_id': gw_pick.id,
             }
-            line_vals.append(val)
+            pick_line = self.env['fpl.gameweek.pick.lines'].search([('gameweek_pick_id', '=', gw_pick.id), ('element_id', '=', element_id.id)], limit=1)
+            if pick_line:
+                pick_line.update(val)
+            else:
+                pick_line = self.env['fpl.gameweek.pick.lines'].create(val)
 
-        self.env['fpl.gameweek.pick.lines'].search([('gameweek_pick_id', '=', gw_pick.id)]).unlink()
+            self._get_element_stat_lines(pick_line, element_datas)
 
-        if line_vals:
-            self.env['fpl.gameweek.pick.lines'].create(line_vals)
-            # self._get_pick_formations(create_line_picks)
+    def _get_element_stat_lines(self, pick_line, element_datas):
+        try:
+            self.env['fpl.element.stats'].search([('pick_line_id', '=', pick_line.id), ('pick_line_id.element_id', '=', pick_line.element_id.id)]).unlink()
+            for el in element_datas:
+                if el.get('id') == pick_line.element_id.element_id:
+                    stat_vals = el.get('explain')[0].get('stats')
+                    fixture = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', el.get('explain')[0].get('fixture'))])
+                    
+                    for st in stat_vals:
+                        st.update({'pick_line_id': pick_line.id,})
+
+                    self.env['fpl.element.stats'].create(stat_vals)
+                    pick_line.update({'gw_fixture_id': fixture.id, 'total_points': el.get('stats').get('total_points')})
+                    
+        except FPLApiException as e:
+            _logger.error(f"Failed to sync gameweek element stats data: {str(e)}")
+            raise UserError(f"Failed to sync gameweek element stats data: {str(e)}")
+        except Exception as e:
+            _logger.error(f"Unexpected error during sync: {str(e)}")
+            raise UserError(f"Unexpected error during sync: {str(e)}")
 
     @api.model
     def get_pick_formations(self, picks):
@@ -283,3 +162,27 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
             'lineup_fwd': lineup_fwd,
             'sub_elements': sub_elements,
         }
+    
+    @api.model
+    def action_open_player_stats(self, pick_line_id):
+        element_stats_ids = self.env['fpl.element.stats'].search([('pick_line_id', '=', pick_line_id)])
+        pick_line = self.browse(pick_line_id)
+        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_gameweek_pick_lines_wizard_action')
+        action.update({
+                'context': {
+                    'default_element_stats_ids': element_stats_ids.ids,
+                    'default_gw_fixture_id': pick_line.gw_fixture_id.id,
+                    'default_element_id': pick_line.element_id.id,
+                    'default_team_h_photo': pick_line.gw_fixture_id.team_h_photo,
+                    'default_team_h': pick_line.gw_fixture_id.team_h.id,
+                    'default_team_h_score': pick_line.gw_fixture_id.team_h_score,
+                    'default_team_a_photo': pick_line.gw_fixture_id.team_a_photo,
+                    'default_team_a': pick_line.gw_fixture_id.team_a.id,
+                    'default_team_a_score': pick_line.gw_fixture_id.team_a_score,
+                    'default_kickoff_time': pick_line.gw_fixture_id.kickoff_time,
+                    'default_started': pick_line.gw_fixture_id.started,
+                    'default_finished': pick_line.gw_fixture_id.finished,
+                },
+            }
+        )
+        return action

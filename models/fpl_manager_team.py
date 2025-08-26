@@ -15,7 +15,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
 
     _description = 'FPL Manager Team'
     
-    manager_id = fields.Char(string=_('Manager ID'))
+    manager_id = fields.Integer(string=_('Manager ID'))
     cookies = fields.Char(string=_('Cookies'))
     x_api_authorization = fields.Char(string=_('X-api-authorization'))
     #Manager Data

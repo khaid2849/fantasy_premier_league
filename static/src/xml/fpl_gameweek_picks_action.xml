@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+    <t t-name="fantasy_premier_league.GameweekPicksFormation" owl="1" xml:space="preserve">
+        <div class="fpl-formation-container o_home_menu h-100 overflow-auto">
+            <!-- Header with inputs and sync button -->
+            <div class="fpl-formation-header">
+                <div class="fpl-formation-controls">
+                    <div class="form-group">
+                        <label for="gameweek-select">Gameweek:</label>
+                        <select id="gameweek-select" class="form-control" t-model="state.gameweek_id">
+                            <option value="">Select Gameweek</option>
+                            <option t-foreach="state.gameweeks" t-as="gw" t-key="gw.id" 
+                                    t-att-value="gw.id" t-esc="gw.name"/>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manager-select">Manager:</label>
+                        <select id="manager-select" class="form-control" t-model="state.manager_id">
+                            <option value="">Select Manager</option>
+                            <option t-foreach="state.managers" t-as="manager" t-key="manager.id" 
+                                    t-att-value="manager.id" t-esc="manager.name"/>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary" t-on-click="syncGameweekPicks">
+                        <i class="fa fa-refresh"/> Sync from API
+                    </button>
+                </div>
+            </div>
+
+            <!-- Team Stats (moved to top) -->
+            <div class="team-stats" t-if="state.teamStats">
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-value">£<t t-esc="state.teamStats.bank"/>m</span>
+                        <span class="stat-label">Bank</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">£<t t-esc="state.teamStats.value"/>m</span>
+                        <span class="stat-label">Team Value</span>
+                    </div>
+                    <div class="stat-item">
+                        <fieldset class="stat-item-points">
+                            <span class="stat-value" t-esc="state.teamStats.points"/>
+                            <span class="stat-label">Points</span>
+                        </fieldset>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" t-esc="state.teamStats.rank"/>
+                        <span class="stat-label">GW Rank</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" t-esc="state.teamStats.event_transfers"/>
+                        <span class="stat-label">Transfers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formation and Substitutes Layout -->
+            <div class="fpl-formation-container-inner">
+                <div class="formation-main-layout">
+                    <!-- Formation Field -->
+                    <div class="fpl-formation-field" 
+                        style="background-image: url('/fantasy_premier_league/static/src/img/formation.svg')">
+                        
+                        <!-- Formation Layout -->
+                        <div class="formation-layout">
+                            <!-- Goalkeeper -->
+                            <div class="position-row goalkeeper-row">
+                                <div class="player-slot goalkeeper" 
+                                    t-foreach="state.formation.lineup_gkp" 
+                                    t-as="player_id" t-key="player_id">
+                                    <div class="player-card" t-att-data-player-id="player_id" style="background-image: url('/fantasy_premier_league/static/src/img/shirt_8-110.png')">
+                                        <span class="player-multiplier" t-if="getPlayerMultiplier(player_id) > 1">
+                                            <t t-if="isPlayerCaptain(player_id)">C</t>
+                                            <t t-elif="isPlayerViceCaptain(player_id)">V</t>
+                                        </span>
+                                    </div>
+                                    <div class="player-jersey">
+                                        <span class="player-name" t-esc="getPlayerName(player_id)"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Defenders -->
+                            <div class="position-row defenders-row">
+                                <div class="player-slot defender" 
+                                    t-foreach="state.formation.lineup_def" 
+                                    t-as="player_id" t-key="player_id">
+                                    <div class="player-card" t-att-data-player-id="player_id" style="background-image: url('/fantasy_premier_league/static/src/img/shirt_8-110.png')">
+                                        <span class="player-multiplier" t-if="getPlayerMultiplier(player_id) > 1">
+                                            <t t-if="isPlayerCaptain(player_id)">C</t>
+                                            <t t-elif="isPlayerViceCaptain(player_id)">V</t>
+                                        </span>
+                                    </div>
+                                    <div class="player-jersey">                                            
+                                            <span class="player-name" t-esc="getPlayerName(player_id)"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Midfielders -->
+                            <div class="position-row midfielders-row">
+                                <div class="player-slot midfielder" 
+                                    t-foreach="state.formation.lineup_mid" 
+                                    t-as="player_id" t-key="player_id">
+                                    <div class="player-card" t-att-data-player-id="player_id" style="background-image: url('/fantasy_premier_league/static/src/img/shirt_8-110.png')">
+                                        <span class="player-multiplier" t-if="getPlayerMultiplier(player_id) > 1">
+                                            <t t-if="isPlayerCaptain(player_id)">C</t>
+                                            <t t-elif="isPlayerViceCaptain(player_id)">V</t>
+                                        </span>
+                                    </div>
+                                    <div class="player-jersey">                                            
+                                        <span class="player-name" t-esc="getPlayerName(player_id)"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Forwards -->
+                            <div class="position-row forwards-row">
+                                <div class="player-slot forward" 
+                                    t-foreach="state.formation.lineup_fwd" 
+                                    t-as="player_id" t-key="player_id">
+                                    <div class="player-card" t-att-data-player-id="player_id" style="background-image: url('/fantasy_premier_league/static/src/img/shirt_8-110.png')">
+                                        <span class="player-multiplier" t-if="getPlayerMultiplier(player_id) > 1">
+                                            <t t-if="isPlayerCaptain(player_id)">C</t>
+                                            <t t-elif="isPlayerViceCaptain(player_id)">V</t>
+                                        </span>
+                                    </div>
+                                    <div class="player-jersey">
+                                        <span class="player-name" t-esc="getPlayerName(player_id)"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Substitutes Bench (moved to right side) -->
+                    <div class="substitutes-bench">
+                        <h4>Substitutes</h4>
+                        <div class="subs-column">
+                            <div class="player-slot substitute" 
+                                t-foreach="state.formation.sub_elements" 
+                                t-as="player_id" t-key="player_id">
+                                <div class="player-card substitute-card" t-att-data-player-id="player_id" style="background-image: url('/fantasy_premier_league/static/src/img/shirt_8-110.png')">
+                                    <span class="player-multiplier" t-if="isPlayerViceCaptain(player_id)">V</span>      
+                                </div>
+                                <div class="player-jersey substitute-jersey">
+                                    <span class="player-name" t-esc="getPlayerName(player_id)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

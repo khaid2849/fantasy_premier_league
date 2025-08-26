@@ -10,19 +10,12 @@ class FplkanbanViewCustomControllerHideSearch extends KanbanController {
   }
 }
 
-const FplkanbanViewCustom = {
-  ...kanbanView,
-  Controller: KanbanController,
-};
-
 const FplkanbanViewCustomHideSearch = {
   ...kanbanView,
   Controller: FplkanbanViewCustomControllerHideSearch,
 };
 
-registry.category("views").add("fpl_kanban_view_custom", FplkanbanViewCustom);
 registry
   .category("views")
   .add("fpl_kanban_view_custom_hide_search", FplkanbanViewCustomHideSearch);
 
-export default FplkanbanViewCustom;

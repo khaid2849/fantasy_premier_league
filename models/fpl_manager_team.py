@@ -182,8 +182,6 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                 if league_phase_mapping:
                     self._update_league_standings(league_phase_mapping)
 
-            current_gameweek = self.env['fpl.events'].search([('is_current', '=', True)])
-            self._sync_gameweek_picks(manager_team, current_gameweek)
 
             _logger.info(f"Successfully synced data for manager {api_manager_id}")
             return manager_team
@@ -651,106 +649,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         except Exception as e:
                 _logger.error(f"Unexpected error during sync: {str(e)}")
                 raise UserError(f"Unexpected error during sync: {str(e)}")
-
-    def _sync_gameweek_picks(self, manager_team, gw):
-        try:
-            exist_pick = self.env['fpl.gameweek.picks'].search([('manager_id', '=', manager_team.id), ('event_id', '=', gw.id)])
-            if exist_pick and not gw.is_current:
-                return
-
-            if gw.is_current:
-                gw_picks = manager_team.sync_from_fpl_api('get_gameweek_picks', team_id=manager_team.manager_id, gw_id=gw.event_id)
-                entry_history = gw_picks.get('entry_history')
-                gw_pick_lines = gw_picks.get('picks')
-                gw_pick_val = {
-                    'event_id': gw.id,
-                    'manager_id': manager_team.id,
-                    'points': entry_history.get('points'),
-                    'total_points': entry_history.get('total_points'),
-                    'rank': entry_history.get('rank'),
-                    'rank_sort': entry_history.get('rank_sort'),
-                    'overall_rank': entry_history.get('overall_rank'),
-                    'percentile_rank': entry_history.get('percentile_rank'),
-                    'bank': entry_history.get('bank'),
-                    'value': entry_history.get('value'),
-                    'event_transfers': entry_history.get('event_transfers'),
-                    'event_transfers_cost': entry_history.get('event_transfers_cost'),
-                    'points_on_bench': entry_history.get('points_on_bench'),
-                }
-
-                if exist_pick:
-                    exist_pick.update(gw_pick_val)
-                else:
-                    create_gw_pick = self.env['fpl.gameweek.picks'].create(gw_pick_val)
-                    exist_pick = create_gw_pick
-
-                self._get_gw_picks_lines(gw_pick_lines, exist_pick)
-
-        except FPLApiException as e:
-            _logger.error(f"Failed to sync manager data: {str(e)}")
-            raise UserError(f"Failed to sync manager data: {str(e)}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
-    
-    def _get_gw_picks_lines(self, picks, gw_pick):
-        line_vals =[]
-        for pick in picks:
-            element_id = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))])
-            val = {
-                'gameweek_pick_id': gw_pick.id,
-                'element_id': element_id.id,
-                'element_type_id': self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))]).id,
-                'team_id': element_id.fpl_team_id.id,
-                'position': pick.get('position'),
-                'multiplier': pick.get('multiplier'),
-                'is_captain': pick.get('is_captain'),
-                'is_vice_captain': pick.get('is_vice_captain'),
-            }
-            line_vals.append(val)
-
-        self.env['fpl.gameweek.pick.lines'].search([('gameweek_pick_id', '=', gw_pick.id)]).unlink()
-
-        if line_vals:
-            create_line_picks = self.env['fpl.gameweek.pick.lines'].create(line_vals)
-            self._get_pick_formations(create_line_picks)
-
-    def _get_pick_formations(self, picks):
-        gw_pick_lines = self.env['fpl.gameweek.pick.lines']
-        lineup_gkp = []
-        lineup_def = []
-        lineup_mid = []
-        lineup_fwd = []
-
-        sub_elements = []
-
-        lineups_element_mapping = {
-            'GKP': lineup_gkp,
-            'DEF': lineup_def,
-            'MID': lineup_mid,
-            'FWD': lineup_fwd,
-        }
-
-        for pick in picks:
-            if pick.position in [12, 13, 14, 15]:
-                sub_elements.append(pick.id)
-            
-            for pos, elements in lineups_element_mapping.items():
-                if pick.position == 1 and pick.element_type_id.plural_name_short == pos:
-                    elements.append(pick.id)
-                
-                elif pick.position in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] and pick.element_type_id.plural_name_short == pos:
-                    elements.append(pick.id)
         
-        gw_pick_lines.browse(lineup_def).update({'parent_id': lineup_gkp[0]})
-        gw_pick_lines.browse(lineup_mid).update({'parent_id': lineup_def[0]})
-        gw_pick_lines.browse(lineup_fwd).update({'parent_id': lineup_mid[0]})
-        gw_pick_lines.browse(sub_elements).update({'parent_id': lineup_fwd[0]})
-
-        return
-
-        
-
     def _get_league_phases_val(self, phases):
         val = []
         for phase in phases:

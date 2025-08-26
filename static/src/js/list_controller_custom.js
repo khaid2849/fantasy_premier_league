@@ -12,17 +12,9 @@ class FplListViewCustomControllerHideSearch extends ListController {
   }
 }
 
-const FplListViewCustom = {
-    ...listView,
-    Controller: ListController,
-};
-
 const FplListViewCustomHideSearch = {
     ...listView,
     Controller: FplListViewCustomControllerHideSearch,
 };
 
-registry.category("views").add("fpl_list_view_custom", FplListViewCustom);
 registry.category("views").add("fpl_list_view_custom_hide_search", FplListViewCustomHideSearch);
-
-export default FplListViewCustom;

@@ -1,0 +1,459 @@
+/* FPL Formation Styles */
+
+/* Ensure the parent container allows scrolling */
+.o_action_manager {
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
+.o_action_manager .o_action {
+    overflow-y: auto !important;
+    height: 100% !important;
+    max-height: 100% !important;
+}
+
+.o_content {
+    overflow-y: auto !important;
+    height: 100% !important;
+    max-height: 100% !important;
+}
+
+/* Force scroll for specific client action */
+.o_action_manager .o_action[data-action-tag="fantasy_premier_league.gameweek_picks_formation"] {
+    overflow-y: auto !important;
+    height: 100% !important;
+    padding: 0 !important;
+}
+
+.fpl-formation-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Arial', sans-serif;
+    overflow: visible;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.fpl-formation-container-inner {
+    width: 100%;
+    overflow: visible;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.formation-main-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* Header Controls */
+.fpl-formation-header {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.fpl-formation-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.fpl-formation-controls .form-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+}
+
+.fpl-formation-controls label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.fpl-formation-controls select {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+.fpl-formation-controls button {
+    align-self: flex-end;
+    padding: 10px 20px;
+    background: #37003c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.fpl-formation-controls button:hover {
+    background: #2a0030;
+}
+
+/* Formation Field */
+.fpl-formation-field {
+    background: #2ea842; /* Football pitch green */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 12px;
+    padding: 30px 20px;
+    height: max-content;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border: 3px solid #ffffff;
+    flex-shrink: 0;
+    flex: 1;
+}
+
+.formation-layout {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 550px;
+    height: auto;
+}
+
+/* Position Rows */
+.position-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.goalkeeper-row {
+    margin-bottom: 40px;
+}
+
+.defenders-row {
+    margin-bottom: 30px;
+}
+
+.midfielders-row {
+    margin-bottom: 30px;
+}
+
+.forwards-row {
+    margin-top: 30px;
+}
+
+/* Player Cards */
+.player-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid color-mix(in srgb, #fff 20%, transparent);
+    border-radius: 4px;
+    padding: 8px;
+    min-width: 120px;
+    max-width: 140px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    height: 140px;
+    width: 112px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.player-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+}
+
+.player-jersey {
+    background: #37003c;
+    color: white;
+    width: 100%;
+    padding: 6px 4px;
+    text-align: center;
+    border-radius: 4px 4px 0 0;
+    font-weight: bold;
+    font-size: 12px;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-name {
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100px;
+}
+
+.player-info {
+    padding: 4px;
+    text-align: center;
+    font-size: 10px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.player-team {
+    font-weight: bold;
+    color: #666;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+.player-multiplier {
+    background: #000000;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 11px;
+    margin: 0px 100px 0px 0px;
+}
+
+/* Position-specific styling */
+.goalkeeper .player-jersey {
+    background: #00b894;
+}
+
+.defender .player-jersey {
+    background: #0984e3;
+}
+
+.midfielder .player-jersey {
+    background: #6c5ce7;
+}
+
+.forward .player-jersey {
+    background: #e84393;
+}
+
+/* Substitutes Bench */
+.substitutes-bench {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    width: 280px;
+    height: max-content;
+    justify-items: center;
+    // margin-top: 55px;
+}
+
+.substitutes-bench h4 {
+    margin: 0 0 15px 0;
+    color: #37003c;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.subs-row {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.subs-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.substitute-card {
+    opacity: 0.8;
+    transform: scale(0.9);
+}
+
+.substitute-jersey {
+    background: #636e72 !important;
+}
+
+.player-position {
+    font-size: 9px;
+    color: #999;
+    text-transform: uppercase;
+}
+
+/* Team Stats */
+.team-stats {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 100px;
+}
+
+.stat-label {
+    font-family: "PremierSans-Regular", Arial, "Helvetica Neue", Helvetica, "sans-serif";
+    display: block;
+    font-size: 12px;
+    color: #000000;
+    margin-bottom: 4px;
+    font-weight: normal;
+}
+
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: #37003c;
+    font-family: "PremierSans-Regular", Arial, "Helvetica Neue", Helvetica, "sans-serif";
+}
+
+.stat-item-points {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(270deg, #6776FF 0%, #05F0FF 100%);
+    color: #37003c;
+    border-width: 1px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .fpl-formation-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .fpl-formation-controls .form-group {
+        min-width: auto;
+    }
+    
+    .formation-main-layout {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .substitutes-bench {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .subs-column {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .position-row {
+        gap: 10px;
+    }
+    
+    .player-card {
+        min-width: 100px;
+        max-width: 120px;
+    }
+    
+    .stats-row {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .fpl-formation-container {
+        padding: 10px;
+        height: auto;
+    }
+    
+    .fpl-formation-container-inner {
+        gap: 10px;
+    }
+    
+    .formation-main-layout {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .formation-layout {
+        min-height: 400px;
+        height: auto;
+    }
+    
+    .fpl-formation-field {
+        min-height: 500px;
+        max-height: 600px;
+        padding: 20px 10px;
+        flex: none;
+    }
+    
+    .substitutes-bench {
+        width: 100%;
+        min-width: auto;
+        padding: 15px;
+    }
+    
+    .player-card {
+        min-width: 80px;
+        max-width: 100px;
+    }
+    
+    .player-name {
+        font-size: 10px;
+        max-width: 80px;
+    }
+}
+
+/* Animation for captain and vice-captain */
+.player-multiplier {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}

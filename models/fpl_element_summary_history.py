@@ -40,11 +40,12 @@ class FPLElementSummaryHistory(models.Model):
     expected_assists = fields.Char(string=_('Expected Assists'))
     expected_goal_involvements = fields.Char(string=_('Expected Goal Involvements'))
     expected_goals_conceded = fields.Char(string=_('Expected Goals Conceded'))
-    value = fields.Float(string=_('Value'))
-    transfers_balance = fields.Float(string=_('Transfers Balance'))
+    value = fields.Integer(string=_('Value'))
+    transfers_balance = fields.Integer(string=_('Transfers Balance'))
     selected = fields.Integer(string=_('Selected'))
     transfers_in = fields.Float(string=_('Transfers In'))
     transfers_out = fields.Float(string=_('Transfers Out'))
+    currency_id = fields.Many2one('res.currency')
     
 
 class FPLElementSummaryHistoryPast(models.Model):
@@ -83,3 +84,22 @@ class FPLElementSummaryHistoryPast(models.Model):
     expected_assists = fields.Char(string=_('Expected Assists'))
     expected_goal_involvements = fields.Char(string=_('Expected Goal Involvements'))
     expected_goals_conceded = fields.Char(string=_('Expected Goals Conceded'))
+    currency_id = fields.Many2one('res.currency')
+
+    class FplSummaryElementFixture(models.Model):
+        _name = 'fpl.summary.element.fixture'
+
+        element_id = fields.Many2one('fpl.elements')
+        fixture_id = fields.Many2one('fpl.gameweek.fixtures')
+        code = fields.Integer(string=_('Code'))
+        team_h = fields.Many2one('fpl.teams')
+        team_h_score = fields.Integer()
+        team_a = fields.Many2one('fpl.teams')
+        team_a_score = fields.Integer()
+        event_id = fields.Many2one('fpl.events')
+        finished = fields.Boolean()
+        minutes = fields.Integer()
+        provisional_start_time = fields.Boolean()
+        kickoff_time = fields.Datetime()
+        is_home = fields.Boolean()
+        difficulty = fields.Integer()

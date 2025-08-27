@@ -6,7 +6,10 @@
         <field name="user_id" ref="base.user_root"/>
         <field name="state">code</field>
         <field name="code">model.cron_get_data_boostrap_static()</field>
-        <field name="active">False</field>
+        <field name="active">True</field>
+        <field name="interval_number">6</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
     </record>
 
     <record id="ir_cron_get_gameweek_fixtures" model="ir.cron">
@@ -16,6 +19,17 @@
         <field name="state">code</field>
         <field name="code">model.cron_get_data_gameweek_fixutres()</field>
         <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_cron_get_data_element_summary" model="ir.cron">
+        <field name="name">Cron Get Elemment Summary Data API</field>
+        <field name="model_id" ref="fantasy_premier_league.model_fpl_elements"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_get_data_element_summary()</field>
+        <field name="interval_number">2</field>
         <field name="interval_type">minutes</field>
         <field name="active">True</field>
     </record>

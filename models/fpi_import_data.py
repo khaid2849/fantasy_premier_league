@@ -158,11 +158,11 @@ class FplImportData(models.Model, FPLApiMixin):
                 phases_model.create(vals)
         _logger.info(f"Synced {len(phases_data)} phases")
     
-    def _get_photo_png(self, code, file_path):            
+    def _get_photo_png(self, code, path):            
         try:
-            team_photo_file = file_path(f'{file_path}/{code}.png')
+            team_photo_file = file_path(f'{path}/{code}.png')
             if not team_photo_file:
-                _logger.warning(f"Photo file not found for code: {code} in path: {file_path}")
+                _logger.warning(f"Photo file not found for code: {code} in path: {path}")
                 return False
                 
             if not os.path.exists(team_photo_file):
@@ -184,7 +184,7 @@ class FplImportData(models.Model, FPLApiMixin):
         teams_model = self.env['fpl.teams']
         for team_data in teams_data:
             existing_team = teams_model.search([('team_id', '=', team_data.get('id'))], limit=1)
-            photo = self._get_photo_png(code=team_data.get('code'), file_path='fantasy_premier_league/static/src/img/teams_logo')
+            photo = self._get_photo_png(code=team_data.get('code'), path='fantasy_premier_league/static/src/img/teams_logo')
             vals = {
                 'team_id': team_data.get('id'),
                 'name': team_data.get('name'),
@@ -273,7 +273,7 @@ class FplImportData(models.Model, FPLApiMixin):
                     pass
             
             region_code = next((region['iso_code_short'] for region in REGIONS if region['id'] == element_data.get('region')), None)
-            photo = self._get_photo_png(code=element_data.get('opta_code'), file_path='fantasy_premier_league/static/src/img/players_avatar')
+            photo = self._get_photo_png(code=element_data.get('opta_code'), path='fantasy_premier_league/static/src/img/players_avatar')
             vals = {
                 'element_id': element_data.get('id'),
                 'fpl_team_id': team_id,

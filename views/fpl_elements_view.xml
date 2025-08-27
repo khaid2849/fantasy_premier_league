@@ -5,8 +5,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="total_points desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
-                <field name="web_name" string="Name"/>
+                <field name="photo" widget="image" options="{'size': [40, 40]}" string=""/>
+                <field name="web_name" string="Player"/>
                 <field name="first_name" optional="hide"/>
                 <field name="second_name" optional="hide"/>
                 <field name="element_type_id" string="Position"/>
@@ -26,12 +26,7 @@
                 <field name="red_cards" optional="hide"/>
                 <field name="can_select" optional="hide"/>
                 <field name="can_transact" optional="hide"/>
-                <field name="status" optional="show" widget="badge" 
-                       decoration-success="status == 'a'" 
-                       decoration-muted="status == 'd'" 
-                       decoration-warning="status == 'i'"
-                       decoration-info="status == 's'"
-                       decoration-danger="status == 'n'"/>
+                <field name="status" optional="show" widget="badge" decoration-success="status == 'a'" decoration-muted="status == 'd'" decoration-warning="status == 'i'" decoration-info="status == 's'" decoration-danger="status == 'n'"/>
                 <field name="currency_id" column_invisible="1"/>
             </list>
         </field>
@@ -58,9 +53,7 @@
                 <templates>
                     <t t-name="card" class="flex-row">
                         <aside class="o_kanban_aside_full">
-                            <field name="photo" widget="background_image"
-                                   options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'image_128'}"
-                                   class="d-block position-relative"/>
+                            <field name="photo" widget="background_image" options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'photo'}" class="d-block position-relative"/>
                         </aside>
                         <main class="ms-2">
                             <div class="d-flex align-items-center">
@@ -105,17 +98,14 @@
                                 </div>
                                 <div class="col-6">
                                     <small class="text-muted">Selected</small>
-                                    <div><field name="selected_by_percent"/>%
+                                    <div>
+                                        <field name="selected_by_percent"/>
+%
                                     </div>
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <field name="status" widget="badge"
-                                       decoration-success="status == 'a'" 
-                                       decoration-muted="status == 'd'" 
-                                       decoration-warning="status == 'i'"
-                                       decoration-info="status == 's'"
-                                       decoration-danger="status == 'n'"/>
+                                <field name="status" widget="badge" decoration-success="status == 'a'" decoration-muted="status == 'd'" decoration-warning="status == 'i'" decoration-info="status == 's'" decoration-danger="status == 'n'"/>
                             </div>
                         </main>
                     </t>
@@ -133,8 +123,7 @@
                     <field name="status" widget="statusbar" statusbar_visible="a,d,i"/>
                 </header>
                 <sheet>
-                    <field name="photo" widget="image" class="oe_avatar"
-                           options="{'preview_image': 'photo', 'size': [128, 128]}"/>
+                    <field name="photo" widget="image" class="oe_avatar" options="{'preview_image': 'photo', 'size': [128, 128]}"/>
                     <div class="oe_title mb24">
                         <h1>
                             <field name="web_name" class="text-break" default_focus="1"/>
@@ -371,8 +360,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="goals_scored desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
-                <field name="web_name" string="Name"/>
+                <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
+                <field name="web_name" string="Player"/>
                 <field name="first_name" optional="hide"/>
                 <field name="second_name" optional="hide"/>
                 <field name="element_type_id" string="Position"/>
@@ -399,8 +388,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="assists desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
-                <field name="web_name" string="Name"/>
+                <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
+                <field name="web_name" string="Player"/>
                 <field name="first_name" optional="hide"/>
                 <field name="second_name" optional="hide"/>
                 <field name="element_type_id" string="Position"/>
@@ -422,8 +411,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="total_points desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}"/>
-                <field name="summary_name_form" />
+                <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
+                <field name="summary_name_form" string="Player"/>
                 <field name="now_cost" string="Cost"/>
                 <field name="selected_by_percent" string="Sel.%"/>
                 <field name="form" string="Form"/>
@@ -438,11 +427,135 @@
         <field name="arch" type="xml">
             <form delete="0" create="0" edit="0">
                 <sheet>
-                    <div class="d-flex" 
-                    style="background-image: url(/static/src/img/pattern.png), linear-gradient(90deg, #05f0ff 0%, #953bff 100%); background-repeat: no-repeat; background-size: 147px 216px, auto; background-position: left -9.6px top -40.8px, 0 0;">
-                        <field name="photo" widget="image"/>
-                        <field name="summary_name_form"/>
+                    <div style="background-image: url(/fantasy_premier_league/static/src/img/pattern.png), linear-gradient(90deg, #05f0ff 0%, #953bff 100%); background-repeat: no-repeat; background-size: 147px 216px, auto; background-position: left -9.6px top -40.8px, 0 0;">
+                        <div class="d-flex" style="border-radius 16px;">
+                            <div>
+                                <field name="photo" widget="image"/>
+                            </div>
+                            <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 12px; margin-left: 18px">
+                                <div>
+                                    <field name="plural_name" style="color: #37003c; font-size: 22px;"/>
+                                </div>
+                                <h1>
+                                    <div>
+                                        <field name="first_name" style="font-size: 18px;"/>
+                                    </div>
+                                    <div>
+                                        <field name="second_name" style="font-size: 30px;"/>
+                                    </div>
+                                </h1>
+                                <h5 style="color: #000; font-size: 18px;">
+                                    <field name="fpl_team_id" options="{'no_open': True}"/>
+                                </h5>
+                            </div>
+                        </div>
                     </div>
+                    <group string="Summary">
+                        <group>
+                            <field name="now_cost" string="Price" widget="monetary"/>
+                            <field name="form"/>
+                            <field name="points_per_game" string="Pts/Match"/>
+                            <field name="event_points" string="Previous GW Pts"/>
+                        </group>
+
+                        <group>
+                            <field name="total_points" string="Total Pts"/>
+                            <field name="bonus" string="Total Bonus"/>
+                            <field name="ict_index" string="ICT index"/>
+                            <field name="selected_by_percent" string="TSB %"/>
+                        </group>
+                    </group>
+
+                    <group string="Form">
+                        <notebook>
+                            <page string="History">
+                                <group string="This Season">
+                                    <field name="history_ids" widget="one2many" readonly="1" nolabel="1">
+                                        <list>
+                                            <field name="round" string="GW"/>
+                                            <field name="opponent_team" string="OPP"/>
+                                            <field name="total_points" string="PTS"/>
+                                            <field name="starts" string="Game(s) Started"/>
+                                            <field name="minutes" string="Minutes played"/>
+                                            <field name="goals_scored" string="Goals Scored"/>
+                                            <field name="assists" string="A"/>
+                                            <field name="expected_goals" string="xG"/>
+                                            <field name="expected_assists" string="xA"/>
+                                            <field name="expected_goal_involvements" string="xGl"/>
+                                            <field name="clean_sheets" string="CS"/>
+                                            <field name="goals_conceded" string="GS"/>
+                                            <field name="tackles" string="T"/>
+                                            <field name="clearances_blocks_interceptions" string="CBI"/>
+                                            <field name="recoveries" string="R"/>
+                                            <field name="defensive_contribution" string="DC"/>
+                                            <field name="own_goals" string="OG"/>
+                                            <field name="penalties_saved" string="PS"/>
+                                            <field name="penalties_missed" string="PM"/>
+                                            <field name="yellow_cards" string="YC"/>
+                                            <field name="red_cards" string="RC"/>
+                                            <field name="saves" string="S"/>
+                                            <field name="bonus" string="B"/>
+                                            <field name="bps" string="BPS"/>
+                                            <field name="influence" string="I"/>
+                                            <field name="creativity" string="C"/>
+                                            <field name="threat" string="T"/>
+                                            <field name="ict_index" string="II"/>
+                                            <field name="selected" string="TSB"/>
+                                            <field name="transfers_balance" string="TB"/>
+                                            <field name="value" string="£" widget="monetary"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                        </list>
+                                    </field>
+                                </group>
+
+                                <group string="Previous Season">
+                                    <field name="history_past_ids" widget="one2many" readonly="1" nolabel="1">
+                                        <list>
+                                            <field name="season_name" string="Season"/>
+                                            <field name="total_points" string="PTS"/>
+                                            <field name="starts" string="Game(s) Started"/>
+                                            <field name="minutes" string="Minutes played"/>
+                                            <field name="goals_scored" string="Goals Scored"/>
+                                            <field name="assists" string="A"/>
+                                            <field name="expected_goals" string="xG"/>
+                                            <field name="expected_assists" string="xA"/>
+                                            <field name="expected_goal_involvements" string="xGl"/>
+                                            <field name="clean_sheets" string="CS"/>
+                                            <field name="goals_conceded" string="GS"/>
+                                            <field name="tackles" string="T"/>
+                                            <field name="clearances_blocks_interceptions" string="CBI"/>
+                                            <field name="recoveries" string="R"/>
+                                            <field name="defensive_contribution" string="DC"/>
+                                            <field name="own_goals" string="OG"/>
+                                            <field name="penalties_saved" string="PS"/>
+                                            <field name="penalties_missed" string="PM"/>
+                                            <field name="yellow_cards" string="YC"/>
+                                            <field name="red_cards" string="RC"/>
+                                            <field name="saves" string="S"/>
+                                            <field name="bonus" string="B"/>
+                                            <field name="bps" string="BPS"/>
+                                            <field name="influence" string="I"/>
+                                            <field name="creativity" string="C"/>
+                                            <field name="threat" string="T"/>
+                                            <field name="ict_index" string="II"/>
+                                            <field name="start_cost" widget="monetary" string="£S"/>
+                                            <field name="end_cost" widget="monetary" string="£E"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                        </list>
+                                    </field>
+                                </group>
+                            </page>
+
+                            <page string="Fixutres">
+                                <field name="summary_element_fixture_ids" widget="one2many" readonly="1" nolabel="1">
+                                    <field name="kickoff_time" string="Date"/>
+                                    <field name="bonus" string="Total Bonus"/>
+                                    <field name="ict_index" string="ICT index"/>
+                                    <field name="selected_by_percent" string="TSB %"/>
+                                </field>
+                            </page>
+                        </notebook>
+                    </group>
                 </sheet>
             </form>
         </field>
@@ -466,7 +579,7 @@
         <field name="search_view_id" ref="fantasy_premier_league.fpl_elements_top_view_search"/>
         <field name="domain">[('goals_scored', '&gt;', 0)]</field>
     </record>
-    
+
     <record id="fpl_elements_top_assists_view_action" model="ir.actions.act_window">
         <field name="name">Top Assists</field>
         <field name="res_model">fpl.elements</field>

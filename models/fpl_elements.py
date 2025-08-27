@@ -127,6 +127,7 @@ class FPLElements(models.Model, FPLApiMixin):
     display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
+    summary_element_fixture_ids = fields.One2many('fpl.summary.element.fixture', 'element_id', string=_('Fixture IDs'))
     summary_name_form = fields.Html(compute='_compute_summary_name_form')
     
     @api.depends('first_name', 'second_name')
@@ -137,7 +138,7 @@ class FPLElements(models.Model, FPLApiMixin):
     @api.depends('fpl_team_id', 'web_name', 'plural_name')
     def _compute_summary_name_form(self):
         for rec in self:
-            rec.summary_name_form = f"<b>{rec.web_name}</b> <br/>{rec.fpl_team_id.name} {rec.plural_name}"
+            rec.summary_name_form = f'<b>{rec.web_name}</b> <br/><span style="color: #af99b1; font-size:11px">{rec.fpl_team_id.name} {rec.element_type_id.singular_name_short}</span>'
            
     def cron_get_data_element_summary(self):
         try:

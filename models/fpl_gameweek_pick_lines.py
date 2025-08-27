@@ -65,6 +65,7 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
 
         except FPLApiException as e:
             _logger.error(f"Failed to sync gameweek picks data: {str(e)}")
+            
             raise UserError(f"Failed to sync gameweek picks data: {str(e)}")
         except Exception as e:
             _logger.error(f"Unexpected error during sync: {str(e)}")
@@ -133,7 +134,6 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
         }
 
         for pick in picks:
-            # Handle both recordset objects and dictionary data
             if hasattr(pick, 'position'):
                 # This is a recordset object
                 position = pick.position

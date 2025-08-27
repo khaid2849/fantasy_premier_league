@@ -1,6 +1,13 @@
-from odoo import models, fields, api, _
+import logging
 
-class FPLElements(models.Model):
+from odoo import models, fields, api, _
+from .fpl_api_mixin import FPLApiMixin
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
+
+
+class FPLElements(models.Model, FPLApiMixin):
     _name = 'fpl.elements'
     _description = 'FPL Elements'
 
@@ -118,9 +125,55 @@ class FPLElements(models.Model):
     defensive_contribution_per_90 = fields.Float(string=_('Defensive Contribution Per 90'))
     currency_id = fields.Many2one('res.currency', string=_('Currency'))
     display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
+    history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
+    history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
 
     @api.depends('first_name', 'second_name')
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = f"{rec.first_name} {rec.second_name}"
            
+    def cron_get_data_element_summary(self):
+        try:
+            elements = self.search([('removed', '=', False)])
+            for element in elements:
+                element_summary = self.sync_from_fpl_api('get_element_summary', player_id=element.element_id)
+                history = element_summary.get('history')
+                history_past = element_summary.get('history_past')
+
+                self._sync_element_history_data(element, history)
+                self._sync_element_history_past_data(element, history_past)
+            
+            _logger.info("Element summary data sync completed successfully")
+            
+        except Exception as e:
+            _logger.error(f"Unexpected error during sync: {str(e)}")
+            raise UserError(f"Unexpected error during sync: {str(e)}")
+    
+    def _sync_element_history_past_data(self, element, history_past):
+        for history in history_past:
+            element_history_past = self.env['fpl.element.summary.history.past'].search([('element_id', '=', element.id), ('element_code', '=', history.get('element_code'))])
+            if element_history_past:
+                element_history_past.write(history)
+            else:
+                self.env['fpl.element.summary.history.past'].create(history)
+    
+    def _sync_element_history_data(self, element, history):
+        for history_item in history:
+            fixture_id = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', history.get('fixture'))])
+            element_history = self.env['fpl.element.summary.history'].search([('element_id', '=', element.id), ('fixture_id', '=', fixture_id.id)])
+
+            history_item.update({
+                'element_id': element.id,
+                'fixture_id': fixture_id.id,
+                'opponent_team': self.env['fpl.teams'].search([('team_id', '=', history.get('opponent_team'))]).id,
+                'kickoff_time': fixture_id.kickoff_time,
+            })
+            history_item.pop('element')
+            history_item.pop('fixture')
+
+            if element_history:
+                element_history.write(history)
+            else:
+                self.env['fpl.element.summary.history'].create(history_item)
+    

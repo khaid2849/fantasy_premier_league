@@ -140,11 +140,10 @@
                             <field name="web_name" class="text-break" default_focus="1"/>
                         </h1>
                         <div class="o_row me-3">
-                            <field name="first_name"/>
-                            <field name="second_name"/>
+                            <field name="display_name"/>
                         </div>
                         <div class="o_row mt-2">
-                            <field name="element_type_id" invisible="11"/>
+                            <field name="element_type_id" invisible="1"/>
                             <field name="plural_name" class="me-3"/>
                             <field name="fpl_team_id" class="me-3" string="Team"/>
                             <span class="badge bg-primary">#

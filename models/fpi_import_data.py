@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+import requests
 
 from odoo import models, api
 from odoo.exceptions import UserError
@@ -157,11 +158,11 @@ class FplImportData(models.Model, FPLApiMixin):
                 phases_model.create(vals)
         _logger.info(f"Synced {len(phases_data)} phases")
     
-    def _get_team_photo_png(self, team_code):            
+    def _get_photo_png(self, code, file_path):            
         try:
-            team_photo_file = file_path(f'fantasy_premier_league/static/src/img/teams_logo/{team_code}.png')
+            team_photo_file = file_path(f'{file_path}/{code}.png')
             if not team_photo_file:
-                _logger.warning(f"Team photo file not found for code: {team_code}")
+                _logger.warning(f"Photo file not found for code: {code} in path: {file_path}")
                 return False
                 
             if not os.path.exists(team_photo_file):
@@ -175,7 +176,7 @@ class FplImportData(models.Model, FPLApiMixin):
             return photo_base64
             
         except Exception as e:
-            _logger.error(f"Error loading team photo for code {team_code}: {str(e)}")
+            _logger.error(f"Error loading photo for code {code}: {str(e)} in path: {file_path}")
             return False
     
     def _sync_teams_data(self, teams_data):
@@ -183,7 +184,7 @@ class FplImportData(models.Model, FPLApiMixin):
         teams_model = self.env['fpl.teams']
         for team_data in teams_data:
             existing_team = teams_model.search([('team_id', '=', team_data.get('id'))], limit=1)
-            photo = self._get_team_photo_png(team_data.get('code'))
+            photo = self._get_photo_png(code=team_data.get('code'), file_path='fantasy_premier_league/static/src/img/teams_logo')
             vals = {
                 'team_id': team_data.get('id'),
                 'name': team_data.get('name'),
@@ -272,6 +273,7 @@ class FplImportData(models.Model, FPLApiMixin):
                     pass
             
             region_code = next((region['iso_code_short'] for region in REGIONS if region['id'] == element_data.get('region')), None)
+            photo = self._get_photo_png(code=element_data.get('opta_code'), file_path='fantasy_premier_league/static/src/img/players_avatar')
             vals = {
                 'element_id': element_data.get('id'),
                 'fpl_team_id': team_id,
@@ -373,9 +375,40 @@ class FplImportData(models.Model, FPLApiMixin):
                 'starts_per_90': element_data.get('starts_per_90'),
                 'clean_sheets_per_90': element_data.get('clean_sheets_per_90'),
                 'defensive_contribution_per_90': element_data.get('defensive_contribution_per_90'),
+                'photo': photo,
             }
             if existing_element:
                 existing_element.write(vals)
             else:
                 elements_model.create(vals)
         _logger.info(f"Synced {len(elements_data)} elements")
+
+    
+    def download_player_avatar(self):
+        player_codes = self.env['fpl.elements'].search([('opta_code', '!=', False)])
+        
+        # Ensure the players_avatar directory exists
+        base_path = file_path('fantasy_premier_league/static/src/img/players_avatar')
+        if not os.path.exists(base_path):
+            os.makedirs(base_path, exist_ok=True)
+            _logger.info(f"Created directory: {base_path}")
+        
+        for player in player_codes:
+            code = player.opta_code.replace('p', '')
+            url_image = f'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
+            
+            save_in_path = os.path.join(base_path, f'{player.opta_code}.png')
+            
+            if not os.path.exists(save_in_path):
+                try:
+                    download_image = requests.get(url_image, timeout=10)
+                    if download_image.status_code == 200:
+                        with open(save_in_path, 'wb') as file:
+                            file.write(download_image.content)
+                        _logger.info(f"Downloaded avatar for player {player.opta_code}")
+                    else:
+                        _logger.warning(f"Failed to download avatar for player {player.opta_code} - Status code: {download_image.status_code}")
+                except Exception as e:
+                    _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
+            else:
+                _logger.info(f"Avatar already exists for player {player.opta_code}")

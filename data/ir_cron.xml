@@ -20,4 +20,12 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_download_player_avatar" model="ir.cron">
+        <field name="name">Cron Download Player Avatar</field>
+        <field name="model_id" ref="fantasy_premier_league.model_fpl_import_data"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model.download_player_avatar()</field>
+        <field name="active">False</field>
+    </record>
 </odoo>

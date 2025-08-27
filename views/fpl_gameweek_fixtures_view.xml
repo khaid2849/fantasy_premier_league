@@ -382,6 +382,24 @@
         </field>
     </record>
 
+    <record id="view_fpl_gameweek_fixtures_calendar" model="ir.ui.view">
+            <field name="name">fpl.gameweek.fixtures.calendar</field>
+            <field name="model">fpl.gameweek.fixtures</field>
+            <field name="arch" type="xml">
+                <calendar string="Premier League Fixtures" create="0" mode="month" date_start="kickoff_time" color="team_h">
+                    <field name="team_h" string="Home Team"/>
+                    <field name="team_a" string="Away Team"/>
+                    <field name="team_h_code" invisible="1"/>
+                    <field name="team_a_code" invisible="1"/>
+                    <field name="team_h_score" string="Home Team Score" invisible="not finished and not started"/>
+                    <field name="team_a_score" string="Away Team Score" invisible="not finished and not started"/>
+                    <field name="kickoff_time"/>
+                    <field name="finished" string="Finished"/>
+                    <field name="started" string="Started"/>
+                </calendar>
+            </field>
+        </record>
+
     <!-- Search View -->
     <record id="view_fpl_gameweek_fixtures_search" model="ir.ui.view">
         <field name="name">fpl.gameweek.fixtures.search</field>
@@ -398,7 +416,8 @@
                 <filter string="Upcoming" name="upcoming" domain="[('started', '=', False)]"/>
                 <separator/>
                 <filter string="Today" name="today" domain="[('kickoff_time', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('kickoff_time', '&lt;', datetime.datetime.combine(context_today() + datetime.timedelta(days=1), datetime.time(0,0,0)))]"/>
-                <filter string="This Week" name="this_week" domain="[('kickoff_time', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')), ('kickoff_time', '&lt;', (context_today() + datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <!-- <filter string="This Week" name="this_week" domain="[('kickoff_time', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')), ('kickoff_time', '&lt;', (context_today() + datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))]"/> -->
+                <filter string="This Week" name="this_week" domain="[('kickoff_time','&gt;=',(context_today()+relativedelta(weeks=-2,days=1,weekday=0)).strftime('%Y-%m-%d')),('kickoff_time','&lt;',(context_today()+relativedelta(weekday=6)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Gameweek" name="group_by_gameweek" domain="[]" context="{'group_by': 'gameweek'}"/>
                     <filter string="Date" name="group_by_date" domain="[]" context="{'group_by': 'kickoff_time:day'}"/>
@@ -411,7 +430,7 @@
     <record id="fpl_gameweek_fixtures_view_action" model="ir.actions.act_window">
         <field name="name">Premier League Fixtures</field>
         <field name="res_model">fpl.gameweek.fixtures</field>
-        <field name="view_mode">kanban,form</field>
+        <field name="view_mode">kanban,calendar,form</field>
         <field name="context">{'search_default_group_by_gameweek': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">

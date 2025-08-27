@@ -12,13 +12,13 @@
                                 <field name="manager_id" column_invisible="1"/>    
                                 <field name="event_id"/>
                                 <field name="points"/>
-                                <field name="total_points"/>
+                                <field name="total_points" string="Total"/>
                                 <field name="rank"/>
                                 <field name="bank"/>
                                 <field name="value"/>
-                                <field name="event_transfers"/>
-                                <field name="event_transfer_cost"/>
-                                <field name="points_on_bench"/>
+                                <field name="event_transfers" string="Transfers"/>
+                                <field name="event_transfer_cost" string="Transfer Cost"/>
+                                <field name="points_on_bench" string="Bench's points"/>
                                 <field name="rank_sort" optional="hide"/>
                                 <field name="overall_rank" optional="hide"/>
                             </list>

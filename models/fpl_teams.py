@@ -30,9 +30,4 @@ class FPLTeams(models.Model):
     pulse_id = fields.Integer(string=_('Pulse ID'))
     element_ids = fields.One2many('fpl.elements', 'fpl_team_id', string=_('Elements'))
     photo = fields.Image(string=_('Photo'))
-
-    # @api.depends('code')
-    # def _compute_team_photo(self):
-    #     for rec in self:
-    #         team_photo_file = file_path('fantasy_premier_league', 'static/src/img/{code}.svg'.format(code=rec.code))
-    #         rec.photo = base64.b64encode(open(team_photo_file, 'rb').read()) if team_photo_file else False
+    

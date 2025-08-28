@@ -127,7 +127,6 @@ class FPLElements(models.Model, FPLApiMixin):
     display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
-    summary_element_fixture_ids = fields.One2many('fpl.summary.element.fixture', 'element_id', string=_('Fixture IDs'))
     summary_name_form = fields.Html(compute='_compute_summary_name_form')
     
     @api.depends('first_name', 'second_name')
@@ -168,9 +167,12 @@ class FPLElements(models.Model, FPLApiMixin):
                 'fixture_id': fixture_id.id,
                 'opponent_team': self.env['fpl.teams'].search([('team_id', '=', history_item.get('opponent_team'))]).id,
                 'kickoff_time': fixture_id.kickoff_time,
+                'is_modified': history_item.get('modified'),
+                'value': history_item.get('value') / 10,
             })
             history_item.pop('element')
             history_item.pop('fixture')
+            history_item.pop('modified')
 
             if element_history:
                 element_history.write(history_item)
@@ -178,14 +180,16 @@ class FPLElements(models.Model, FPLApiMixin):
                 self.env['fpl.element.summary.history'].create(history_item)
     
     def _sync_element_history_past_data(self, element, history_past):
-        for history in history_past:
-            element_history_past = self.env['fpl.element.summary.history.past'].search([('element_id', '=', element.id), ('element_code', '=', history.get('element_code'))])
-            history.update({
+        for past in history_past:
+            element_history_past = self.env['fpl.element.summary.history.past'].search([('season_name', '=', past.get('season_name')),('element_id', '=', element.id), ('element_code', '=', past.get('element_code'))])
+            past.update({
                 'element_id': element.id,
-                'element_code': history.get('element_code'),
+                'element_code': past.get('element_code'),
+                'start_cost': past.get('start_cost') / 10,
+                'end_cost': past.get('end_cost') / 10,
             })
             
             if element_history_past:
-                element_history_past.write(history)
+                element_history_past.write(past)
             else:
-                self.env['fpl.element.summary.history.past'].create(history)
+                self.env['fpl.element.summary.history.past'].create(past)

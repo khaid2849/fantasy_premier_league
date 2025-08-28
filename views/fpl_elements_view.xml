@@ -547,12 +547,12 @@
                             </page>
 
                             <page string="Fixutres">
-                                <field name="summary_element_fixture_ids" widget="one2many" readonly="1" nolabel="1">
+                                <!-- <field name="summary_element_fixture_ids" widget="one2many" readonly="1" nolabel="1">
                                     <field name="kickoff_time" string="Date"/>
                                     <field name="bonus" string="Total Bonus"/>
                                     <field name="ict_index" string="ICT index"/>
                                     <field name="selected_by_percent" string="TSB %"/>
-                                </field>
+                                </field> -->
                             </page>
                         </notebook>
                     </group>

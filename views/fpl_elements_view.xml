@@ -471,38 +471,39 @@
                             <page string="History">
                                 <group string="This Season">
                                     <field name="history_ids" widget="one2many" readonly="1" nolabel="1">
-                                        <list>
+                                        <list default_order="round desc">
                                             <field name="round" string="GW"/>
-                                            <field name="opponent_team" string="OPP"/>
-                                            <field name="total_points" string="PTS"/>
-                                            <field name="starts" string="Game(s) Started"/>
-                                            <field name="minutes" string="Minutes played"/>
-                                            <field name="goals_scored" string="Goals Scored"/>
-                                            <field name="assists" string="A"/>
-                                            <field name="expected_goals" string="xG"/>
-                                            <field name="expected_assists" string="xA"/>
-                                            <field name="expected_goal_involvements" string="xGl"/>
-                                            <field name="clean_sheets" string="CS"/>
-                                            <field name="goals_conceded" string="GS"/>
-                                            <field name="tackles" string="T"/>
-                                            <field name="clearances_blocks_interceptions" string="CBI"/>
-                                            <field name="recoveries" string="R"/>
-                                            <field name="defensive_contribution" string="DC"/>
-                                            <field name="own_goals" string="OG"/>
-                                            <field name="penalties_saved" string="PS"/>
-                                            <field name="penalties_missed" string="PM"/>
-                                            <field name="yellow_cards" string="YC"/>
-                                            <field name="red_cards" string="RC"/>
-                                            <field name="saves" string="S"/>
-                                            <field name="bonus" string="B"/>
-                                            <field name="bps" string="BPS"/>
-                                            <field name="influence" string="I"/>
-                                            <field name="creativity" string="C"/>
-                                            <field name="threat" string="T"/>
-                                            <field name="ict_index" string="II"/>
-                                            <field name="selected" string="TSB"/>
-                                            <field name="transfers_balance" string="TB"/>
-                                            <field name="value" string="£" widget="monetary"/>
+                                            <field name="opponent_team" column_invisible="1"/>
+                                            <field name="opponent_team_display" string="OPP"/>
+                                            <field name="total_points" string="PTS" sum="Total Points"/>
+                                            <field name="starts" string="ST" sum="Total Game(s) Started"/>
+                                            <field name="minutes" string="MP" sum="Total Minutes Played"/>
+                                            <field name="goals_scored" string="GS" sum="Total Goals Scored"/>
+                                            <field name="assists" string="A" sum="Total Assists"/>
+                                            <field name="expected_goals" string="xG" sum="Total Expected Goals"/>
+                                            <field name="expected_assists" string="xA" sum="Total Expected Assists"/>
+                                            <field name="expected_goal_involvements" string="xGl" sum="Total Expected Goal Involvements"/>
+                                            <field name="clean_sheets" string="CS" sum="Total Clean Sheets"/>
+                                            <field name="goals_conceded" string="GS" sum="Total Goals Conceded"/>
+                                            <field name="tackles" string="T" sum="Total Tackles"/>
+                                            <field name="clearances_blocks_interceptions" string="CBI" sum="Total Clearances Blocks Interceptions"/>
+                                            <field name="recoveries" string="R" sum="Total Recoveries"/>
+                                            <field name="defensive_contribution" string="DC" sum="Total Defensive Contribution"/>
+                                            <field name="own_goals" string="OG" sum="Total Own Goals"/>
+                                            <field name="penalties_saved" string="PS" sum="Total Penalties Saved"/>
+                                            <field name="penalties_missed" string="PM" sum="Total Penalties Missed"/>
+                                            <field name="yellow_cards" string="YC" sum="Total Yellow Cards"/>
+                                            <field name="red_cards" string="RC" sum="Total Red Cards"/>
+                                            <field name="saves" string="S" sum="Total Saves"/>
+                                            <field name="bonus" string="B" sum="Total Bonus"/>
+                                            <field name="bps" string="BPS" sum="Total BPS"/>
+                                            <field name="influence" string="I" sum="Total Influence"/>
+                                            <field name="creativity" string="C" sum="Total Creativity"/>
+                                            <field name="threat" string="T" sum="Total Threat"/>
+                                            <field name="ict_index" string="II" sum="Total ICT Index"/>
+                                            <field name="selected" string="TSB" sum="Total TSB"/>
+                                            <field name="transfers_balance" string="TB" sum="Total Transfers Balance"/>
+                                            <field name="value" string="£" widget="monetary" sum="Total Value"/>
                                             <field name="currency_id" column_invisible="1"/>
                                         </list>
                                     </field>
@@ -513,9 +514,9 @@
                                         <list>
                                             <field name="season_name" string="Season"/>
                                             <field name="total_points" string="PTS"/>
-                                            <field name="starts" string="Game(s) Started"/>
-                                            <field name="minutes" string="Minutes played"/>
-                                            <field name="goals_scored" string="Goals Scored"/>
+                                            <field name="starts" string="ST"/>
+                                            <field name="minutes" string="MP"/>
+                                            <field name="goals_scored" string="GS"/>
                                             <field name="assists" string="A"/>
                                             <field name="expected_goals" string="xG"/>
                                             <field name="expected_assists" string="xA"/>
@@ -547,12 +548,18 @@
                             </page>
 
                             <page string="Fixutres">
-                                <!-- <field name="summary_element_fixture_ids" widget="one2many" readonly="1" nolabel="1">
-                                    <field name="kickoff_time" string="Date"/>
-                                    <field name="bonus" string="Total Bonus"/>
-                                    <field name="ict_index" string="ICT index"/>
-                                    <field name="selected_by_percent" string="TSB %"/>
-                                </field> -->
+                                <field name="fixutres_ids" widget="one2many" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="kickoff_time" string="Date"/>
+                                        <field name="gameweek" string="GW"/>
+                                        <field name="opponent_team_display" string="OPP"/>
+                                        <field name="difficulty" string="FDR" widget="badge"
+                                               decoration-success="difficulty < 3"
+                                               decoration-info="difficulty == 3"
+                                               decoration-danger="difficulty > 3"
+                                        />
+                                    </list>
+                                </field>
                             </page>
                         </notebook>
                     </group>

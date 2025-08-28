@@ -85,10 +85,10 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     def _computed_used_chips(self):
         for rec in self:
             if rec.manager_chip_ids:
-                rec.used_bench_boost = False if any(chip.is_bench_boost and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_wildcard = False if any(chip.is_wildcard and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_free_hit = False if any(chip.is_free_hit and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_triple_captain = False if any(chip.is_triple_captain and chip.status_for_entry == 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_bench_boost = False if any(chip.is_bench_boost and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_wildcard = False if any(chip.is_wildcard and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_free_hit = False if any(chip.is_free_hit and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
+                rec.used_triple_captain = False if any(chip.is_triple_captain and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
 
 
     def action_open_entry_history(self):

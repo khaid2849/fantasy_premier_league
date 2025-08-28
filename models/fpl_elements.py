@@ -127,6 +127,7 @@ class FPLElements(models.Model, FPLApiMixin):
     display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
+    fixutres_ids = fields.One2many('fpl.element.summary.fixture', 'element_id', string=_('Fixutres IDs'))
     summary_name_form = fields.Html(compute='_compute_summary_name_form')
     
     @api.depends('first_name', 'second_name')
@@ -146,10 +147,12 @@ class FPLElements(models.Model, FPLApiMixin):
                 element_summary = self.sync_from_fpl_api('get_element_summary', player_id=element.element_id)
                 history = element_summary.get('history')
                 history_past = element_summary.get('history_past')
+                fixtures = element_summary.get('fixtures')
 
                 self._sync_element_history_data(element, history)
                 self._sync_element_history_past_data(element, history_past)
-            
+                self._sync_element_fixture_data(element, fixtures)
+
             _logger.info("Element summary data sync completed successfully")
             
         except Exception as e:
@@ -193,3 +196,13 @@ class FPLElements(models.Model, FPLApiMixin):
                 element_history_past.write(past)
             else:
                 self.env['fpl.element.summary.history.past'].create(past)
+    
+    def _sync_element_fixture_data(self, element, fixtures):
+        for fixture in fixtures:
+            fixture_id = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', fixture.get('id'))])
+            element_fixture = self.env['fpl.element.summary.fixture'].search([('element_id', '=', element.id), ('fixture_id', '=', fixture_id.id)])
+
+            fixture.update({
+                'element_id': element.id,
+                'fixture_id': fixture_id.id,
+            })  

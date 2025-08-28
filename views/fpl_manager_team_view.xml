@@ -154,12 +154,13 @@
                             <field name="pick_ids" nolabel="1">
                                 <list>
                                     <field name="element_id" column_invisible="1"/>
-                                    <field name="web_name" string="Name"/>
-                                    <field name="team_id"/>
+                                    <field name="team_id" column_invisible="1"/>
+                                    <field name="web_name" string="Player"/>
+                                    <field name="team_display" string="Team"/>
                                     <field name="element_type_id" string="Position"/> 
                                     <field name="position" optional="hide"/>
-                                    <field name="is_captain"/>
-                                    <field name="is_vice_captain"/>
+                                    <field name="is_captain" string="Captain"/>
+                                    <field name="is_vice_captain" string="Vice Captain"/>
                                     <field name="selling_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                     <field name="purchase_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                     <field name="currency_id" column_invisible="1"/>
@@ -193,7 +194,7 @@
                                         <field name="name"/>
                                         <field name="entry_rank" column_invisible="1"/>
                                         <field name="entry_rank_form"/>
-                                        <field name="entry_last_rank"/>
+                                        <field name="entry_last_rank" string="Last rank"/>
                                         <field name="overall_points"/>
                                     </list>
                                 </field>

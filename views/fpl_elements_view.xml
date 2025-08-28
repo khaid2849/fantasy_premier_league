@@ -511,7 +511,7 @@
 
                                 <group string="Previous Season">
                                     <field name="history_past_ids" widget="one2many" readonly="1" nolabel="1">
-                                        <list>
+                                        <list default_order="season_name desc">
                                             <field name="season_name" string="Season"/>
                                             <field name="total_points" string="PTS"/>
                                             <field name="starts" string="ST"/>

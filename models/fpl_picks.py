@@ -16,3 +16,9 @@ class FPLPicks(models.Model):
     currency_id = fields.Many2one('res.currency', string='Currency')
     manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))
     web_name = fields.Char(string=_('Web Name'), related='element_id.web_name')
+    team_display = fields.Html(compute='_compute_team_display')
+
+    @api.depends('team_id')
+    def _compute_team_display(self):
+        for rec in self:
+            rec.team_display = f'<img src="/fantasy_premier_league/static/src/img/teams_logo/{rec.team_id.code}.png" style="width: 20px; height: 20px; border-radius: 10px;"/> <span style="font-size: 12px;">{rec.team_id.short_name}</span>'

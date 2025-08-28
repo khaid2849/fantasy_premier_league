@@ -310,79 +310,100 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             "made": data.get('transfers', {}).get('made'),
             "bank": data.get('transfers', {}).get('bank') / 10,
             "value": data.get('transfers', {}).get('value') / 10,
-            'pick_ids': self._update_manager_picks_data(data.get('picks', []), manager_id),
+            # 'pick_ids': self._update_manager_picks_data(data.get('picks', []), manager_id),
             'manager_chip_ids': self._update_manager_chips_data(data.get('chips', []), manager_id),
         }
         if update_vals:
             self.write(update_vals)
+        
+        self._update_manager_picks_data(data.get('picks', []), manager_id)
 
     def _update_manager_picks_data(self, picks, manager_id):
-        if not picks:
-            existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id)])
-            if existing_picks:
-                existing_picks.unlink()
-            # return []
-        
-        existing_picks = {(p.element_id.element_id, p.position): p for p in self.env['fpl.picks'].search([('manager_id', '=', manager_id)])}
-        
-        element_ids = [pick.get('element') for pick in picks]
-        element_type_ids = [pick.get('element_type') for pick in picks]
-        
-        elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search([('element_id', 'in', element_ids)])}
-        element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search([('element_type_id', 'in', [str(et_id) for et_id in element_type_ids])])}
-        
-        picks_to_create = []
-        picks_to_update = []
-        current_picks = set()
-        
         for pick in picks:
-            element_id = pick.get('element')
-            position = pick.get('position')
-            current_picks.add((element_id, position))
-            
-            element = elements_dict.get(element_id)
-            element_type = element_types_dict.get(str(pick.get('element_type')))
-            
-            if not element or not element_type:
-                continue
-                
-            pick_vals = {
-                'element_id': element.id,
-                'position': position,
-                'multiplier': pick.get('multiplier'),
-                'is_captain': pick.get('is_captain'),
-                'is_vice_captain': pick.get('is_vice_captain'),
+            element_id = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))])
+            existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id), ('element_id', '=', element_id.id)])
+            element_type = self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))])
+            pick.update({
+                'manager_id': manager_id,
+                'element_id': element_id.id,
                 'element_type_id': element_type.id,
                 'selling_price': pick.get('selling_price') / 10,
                 'purchase_price': pick.get('purchase_price') / 10,
-                'manager_id': manager_id,
-            }
-            
-            existing_pick = existing_picks.get((element_id, position))
-            if existing_pick:
-                needs_update = False
-                for key, new_val in pick_vals.items():
-                    if key != 'manager_id' and hasattr(existing_pick, key) and getattr(existing_pick, key) != new_val:
-                        needs_update = True
-                        break
-                if needs_update:
-                    picks_to_update.append((existing_pick, pick_vals))
+            })
+            pick.pop('element')
+            pick.pop('element_type')
+
+            if existing_picks:
+                existing_picks.update(pick)
             else:
-                picks_to_create.append(pick_vals)
+                self.env['fpl.picks'].create(pick)
+
+        # if not picks:
+        #     existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id)])
+        #     if existing_picks:
+        #         existing_picks.unlink()
+        #     # return []
         
-        obsolete_picks = [pick for key, pick in existing_picks.items() if key not in current_picks]
-        if obsolete_picks:
-            for pick in obsolete_picks:
-                pick.unlink()
+        # existing_picks = {(p.element_id.element_id, p.position): p for p in self.env['fpl.picks'].search([('manager_id', '=', manager_id)])}
         
-        for pick, vals in picks_to_update:
-            pick.write(vals)
+        # element_ids = [pick.get('element') for pick in picks]
+        # element_type_ids = [pick.get('element_type') for pick in picks]
         
-        if picks_to_create:
-            created_picks = self.env['fpl.picks'].create(picks_to_create)
-            return [(0, 0, {'id': pick.id}) for pick in created_picks]
-        else:
-            return []
+        # elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search([('element_id', 'in', element_ids)])}
+        # element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search([('element_type_id', 'in', [str(et_id) for et_id in element_type_ids])])}
+        
+        # picks_to_create = []
+        # picks_to_update = []
+        # current_picks = set()
+        
+        # for pick in picks:
+        #     element_id = pick.get('element')
+        #     position = pick.get('position')
+        #     current_picks.add((element_id, position))
+            
+        #     element = elements_dict.get(element_id)
+        #     element_type = element_types_dict.get(str(pick.get('element_type')))
+            
+        #     if not element or not element_type:
+        #         continue
+                
+        #     pick_vals = {
+        #         'element_id': element.id,
+        #         'position': position,
+        #         'multiplier': pick.get('multiplier'),
+        #         'is_captain': pick.get('is_captain'),
+        #         'is_vice_captain': pick.get('is_vice_captain'),
+        #         'element_type_id': element_type.id,
+        #         'selling_price': pick.get('selling_price') / 10,
+        #         'purchase_price': pick.get('purchase_price') / 10,
+        #         'manager_id': manager_id,
+        #     }
+            
+        #     existing_pick = existing_picks.get((element_id, position))
+        #     if existing_pick:
+        #         needs_update = False
+        #         for key, new_val in pick_vals.items():
+        #             if key != 'manager_id' and hasattr(existing_pick, key) and getattr(existing_pick, key) != new_val:
+        #                 needs_update = True
+        #                 break
+        #         if needs_update:
+        #             picks_to_update.append((existing_pick, pick_vals))
+        #     else:
+        #         picks_to_create.append(pick_vals)
+        
+        # obsolete_picks = [pick for key, pick in existing_picks.items() if key not in current_picks]
+        # if obsolete_picks:
+        #     for pick in obsolete_picks:
+        #         pick.unlink()
+        
+        # for pick, vals in picks_to_update:
+        #     pick.write(vals)
+        
+        # if picks_to_create:
+        #     created_picks = self.env['fpl.picks'].create(picks_to_create)
+        #     return [(0, 0, {'id': pick.id}) for pick in created_picks]
+        # else:
+        #     return []
 
     def _update_manager_chips_data(self, chips, manager_id):
         if not chips:

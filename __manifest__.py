@@ -11,7 +11,7 @@
         This module allows you to manage your FPL team and track your performance.
         It also allows you to import your FPL team from the FPL website.
     """,
-    'website': 'https://www.fantasypremierleague.com/',
+    'website': 'https://fantasy.premierleague.com/',
     'depends': ['base', 'mail', 'web'],
     'data': [
         'security/ir.model.access.csv',
@@ -32,7 +32,7 @@
     'demo': [],
     'installable': True,
     'application': True,
-    'icon': 'fantasy_premier_league/static/description/icon.png',
+    'icon': '/fantasy_premier_league/static/description/icon.png',
     'assets': {
         'web.assets_backend': [
             'fantasy_premier_league/static/src/js/*.js',

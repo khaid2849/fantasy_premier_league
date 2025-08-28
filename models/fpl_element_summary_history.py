@@ -27,10 +27,10 @@ class FPLElementSummaryHistory(models.Model):
     saves = fields.Integer(string=_('Saves'))
     bonus = fields.Integer(string=_('Bonus'))
     bps = fields.Integer(string=_('BPS'))
-    influence = fields.Char(string=_('Influence'))
-    creativity = fields.Char(string=_('Creativity'))
-    threat = fields.Char(string=_('Threat'))
-    ict_index = fields.Char(string=_('ICT Index'))
+    influence = fields.Float(string=_('Influence'))
+    creativity = fields.Float(string=_('Creativity'))
+    threat = fields.Float(string=_('Threat'))
+    ict_index = fields.Float(string=_('ICT Index'))
     clearances_blocks_interceptions = fields.Integer(string=_('Clearances Blocks Interceptions'))
     recoveries = fields.Integer(string=_('Recoveries'))
     tackles = fields.Integer(string=_('Tackles'))
@@ -72,8 +72,8 @@ class FPLElementSummaryHistory(models.Model):
                     result = lose
                 else:
                     result = draw
-
-            rec.opponent_team_display = f'<img src="{rec.opponent_team.photo}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{rec.opponent_team.short_name + " " + f"({home_away})"}</span> {result}'
+            opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.opponent_team.code}.png'
+            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 9px;">{rec.opponent_team.short_name + " " + f"({home_away})"}</span> {result}'
     
 
 class FPLElementSummaryHistoryPast(models.Model):
@@ -141,22 +141,7 @@ class FplElementSummaryFixture(models.Model):
             team_a = rec.fixture_id.team_a
             team_h = rec.fixture_id.team_h
             home_away = 'H' if rec.is_home else 'A'
-            opponent_team = team_h if rec.is_home else team_a
-
-            rec.opponent_team_display = f'<img src="{opponent_team.photo}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{opponent_team.short_name + " " + f"({home_away})"}</span>'
-
-    "id": 23,
-            "code": 2561917,
-            "team_h": 7,
-            "team_h_score": null,
-            "team_a": 10,
-            "team_a_score": null,
-            "event": 3,
-            "finished": false,
-            "minutes": 0,
-            "provisional_start_time": false,
-            "kickoff_time": "2025-08-30T11:30:00Z",
-            "event_name": "Gameweek 3",
-            "is_home": true,
-            "difficulty": 3
-        }
+            opponent_team = team_h if rec.element_id.fpl_team_id != team_h else team_a
+            
+            opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{opponent_team.code}.png'
+            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{opponent_team.short_name + " " + f"({home_away})"}</span>'

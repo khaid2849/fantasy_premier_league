@@ -13,7 +13,7 @@
     <menuitem id="menu_fpl_league_standings" name="League Standings" parent="menu_fpl_manager_team_root" sequence="2" action="fantasy_premier_league.fpl_leagues_view_action"/>
     <menuitem id="menu_fpl_gameweek_picks" name="Gameweek Picks" parent="menu_fpl_manager_team_root" sequence="3" action="fantasy_premier_league.ir_actions_fpl_gameweek_picks_action"/>
 
-    <menuitem id="menu_fpl_element_stats" name="Element Stats" parent="menu_fpl_root" sequence="4" action="fantasy_premier_league.fpl_elements_summary_view_action"/>
+    <menuitem id="menu_fpl_element_stats" name="Stats" parent="menu_fpl_root" sequence="4" action="fantasy_premier_league.fpl_elements_summary_view_action"/>
 
     <menuitem id="menu_fpl_table" name="Table" parent="menu_fpl_root" sequence="5" action="fantasy_premier_league.fpl_table_view_action"/>
     

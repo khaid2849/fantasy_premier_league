@@ -200,9 +200,23 @@ class FPLElements(models.Model, FPLApiMixin):
     def _sync_element_fixture_data(self, element, fixtures):
         for fixture in fixtures:
             fixture_id = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', fixture.get('id'))])
-            element_fixture = self.env['fpl.element.summary.fixture'].search([('element_id', '=', element.id), ('fixture_id', '=', fixture_id.id)])
+            element_fixture = self.env['fpl.element.summary.fixture'].search(
+                [
+                    ('element_id', '=', element.id), 
+                    ('fixture_id', '=', fixture_id.id),
+                ]
+            )
 
             fixture.update({
                 'element_id': element.id,
                 'fixture_id': fixture_id.id,
-            })  
+                'kickoff_time': fixture_id.kickoff_time,
+                'event_name': fixture_id.event_id.name
+            })
+            fixture.pop('id')
+            fixture.pop('event')
+
+            if element_fixture:
+                element_fixture.update(fixture)
+            else:
+                self.env['fpl.element.summary.fixture'].create(fixture)

@@ -321,7 +321,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id)])
             if existing_picks:
                 existing_picks.unlink()
-            return []
+            # return []
         
         existing_picks = {(p.element_id.element_id, p.position): p for p in self.env['fpl.picks'].search([('manager_id', '=', manager_id)])}
         

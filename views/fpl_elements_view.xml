@@ -501,8 +501,8 @@
                                             <field name="creativity" string="C" sum="Total Creativity"/>
                                             <field name="threat" string="T" sum="Total Threat"/>
                                             <field name="ict_index" string="II" sum="Total ICT Index"/>
+                                            <field name="transfers_balance" string="NT" sum="Total Transfers Balance"/>
                                             <field name="selected" string="TSB" sum="Total TSB"/>
-                                            <field name="transfers_balance" string="TB" sum="Total Transfers Balance"/>
                                             <field name="value" string="£" widget="monetary" sum="Total Value"/>
                                             <field name="currency_id" column_invisible="1"/>
                                         </list>
@@ -554,10 +554,9 @@
                                         <field name="gameweek" string="GW"/>
                                         <field name="opponent_team_display" string="OPP"/>
                                         <field name="difficulty" string="FDR" widget="badge"
-                                               decoration-success="difficulty < 3"
-                                               decoration-info="difficulty == 3"
-                                               decoration-danger="difficulty > 3"
-                                        />
+                                               decoration-success="difficulty &lt; 3"
+                                               decoration-muted="difficulty == 3"
+                                               decoration-danger="difficulty &gt; 3"/>
                                     </list>
                                 </field>
                             </page>

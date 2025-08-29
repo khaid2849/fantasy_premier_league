@@ -130,6 +130,10 @@ class FPLElements(models.Model, FPLApiMixin):
     fixutres_ids = fields.One2many('fpl.element.summary.fixture', 'element_id', string=_('Fixutres IDs'))
     summary_name_form = fields.Html(compute='_compute_summary_name_form')
     
+    # @api.model
+    # def get_views(self, views, options=None):
+    #     return super().get_view(views, options)
+
     @api.depends('first_name', 'second_name')
     def _compute_display_name(self):
         for rec in self:

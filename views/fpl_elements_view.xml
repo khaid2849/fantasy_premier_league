@@ -4,7 +4,7 @@
         <field name="name">fpl.elements.tree</field>
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0" default_order="total_points desc">
+            <list string="Players" create="0" edit="0" delete="0" default_order="total_points desc">
                 <field name="photo" widget="image" options="{'size': [40, 40]}" string=""/>
                 <field name="web_name" string="Player"/>
                 <field name="first_name" optional="hide"/>
@@ -36,7 +36,7 @@
         <field name="name">fpl.elements.kanban</field>
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
-            <kanban default_order="total_points desc" create="0" edit="0" delete="0">
+            <kanban string="Players" default_order="total_points desc" create="0" edit="0" delete="0">
                 <field name="photo"/>
                 <field name="web_name"/>
                 <field name="first_name"/>
@@ -118,7 +118,7 @@
         <field name="name">fpl.elements.form</field>
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
-            <form delete="0" create="0" edit="0">
+            <form delete="0" create="0" edit="0" string="Player">
                 <header>
                     <field name="status" widget="statusbar" statusbar_visible="a,d,i"/>
                 </header>
@@ -320,7 +320,7 @@
     <record id="fpl_elements_view_search" model="ir.ui.view">
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
-            <search string="Filters">
+            <search string="Price">
                 <field name="web_name"/>
                 <field name="first_name"/>
                 <field name="second_name"/>
@@ -401,9 +401,10 @@
     </record>
 
     <record id="fpl_elements_view_action" model="ir.actions.act_window">
-        <field name="name">FPL Elements</field>
+        <field name="name">Players</field>
         <field name="res_model">fpl.elements</field>
         <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="fantasy_premier_league.fpl_elements_view_search"/>
     </record>
 
     <record id="fpl_elements_summary_view_tree" model="ir.ui.view">

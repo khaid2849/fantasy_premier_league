@@ -1788,7 +1788,6 @@ REGIONS = [
     }
 ]
 
-
 MAPPING_SELECTIONS_DATA = {
     "element_stats" : [
         ('minutes', _('Minutes played')),

@@ -355,6 +355,63 @@
         </field>
     </record>
 
+    <record id="fpl_elements_view_graph" model="ir.ui.view">
+         <field name="name">fpl.elements.view.graph</field>
+         <field name="model">fpl.elements</field>
+         <field name="arch" type="xml">
+             <graph string="Players Analysis">
+                 <field name="fpl_team_id"/>
+                 <field name="element_id" invisible="1"/>
+                 <field name="status"/>
+                 <field name="points_per_game"/>
+                 <field name="selected_by_percent"/>
+                 <field name="total_points"/>   
+                 <field name="transfers_in"/>
+                 <field name="transfers_in_event"/>
+                 <field name="transfers_out"/>
+                 <field name="transfers_out_event"/>
+                 <field name="value_form"/>
+                 <field name="value_season"/>
+                 <field name="minutes"/>
+                 <field name="goals_scored"/>
+                 <field name="assists"/>
+                 <field name="clean_sheets"/>
+                 <field name="goals_conceded"/>
+                 <field name="own_goals"/>
+                 <field name="penalties_saved"/>
+                 <field name="penalties_missed"/>
+                 <field name="yellow_cards"/>
+                 <field name="red_cards"/>
+                 <field name="saves"/>
+                 <field name="bonus"/>
+                 <field name="bps"/>
+                 <field name="influence"/>
+                 <field name="creativity"/>
+                 <field name="threat"/>
+                 <field name="ict_index"/>
+                 <field name="clearances_blocks_interceptions"/>
+                 <field name="recoveries"/>
+                 <field name="tackles"/>
+                 <field name="defensive_contribution"/>
+                 <field name="starts"/>
+                 <field name="expected_goals"/>
+                 <field name="expected_assists"/>
+                 <field name="expected_goal_involvements"/>
+                 <field name="expected_goals_conceded"/>
+                 <field name="expected_goals_per_90"/>
+                 <field name="expected_assists_per_90"/>
+                 <field name="expected_goal_involvements_per_90"/>
+                 <field name="saves_per_90"/>
+                 <field name="goals_conceded_per_90"/>
+                 <field name="starts_per_90"/>
+                 <field name="clean_sheets_per_90"/>
+                 <field name="defensive_contribution_per_90"/>
+                 <field name="now_cost_rank"/>
+                 <field name="in_dreamteam"/>
+             </graph>
+         </field>
+    </record>
+
     <record id="fpl_elements_top_scorers_view_tree" model="ir.ui.view">
         <field name="name">fpl.elements.top_scorers.tree</field>
         <field name="model">fpl.elements</field>
@@ -405,6 +462,12 @@
         <field name="res_model">fpl.elements</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="fantasy_premier_league.fpl_elements_view_search"/>
+    </record>
+
+    <record id="fpl_elements_view_report_action" model="ir.actions.act_window">
+        <field name="name">Players Report</field>
+        <field name="res_model">fpl.elements</field>
+        <field name="view_mode">graph,pivot</field>
     </record>
 
     <record id="fpl_elements_summary_view_tree" model="ir.ui.view">

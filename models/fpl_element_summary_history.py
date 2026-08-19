@@ -72,8 +72,11 @@ class FPLElementSummaryHistory(models.Model):
                     result = lose
                 else:
                     result = draw
+            if not rec.opponent_team:
+                rec.opponent_team_display = False
+                continue
             opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.opponent_team.code}.svg'
-            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 9px;">{rec.opponent_team.short_name + " " + f"({home_away})"}</span> {result}'
+            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 9px;">{rec.opponent_team.short_name} ({home_away})</span> {result}'
     
 
 class FPLElementSummaryHistoryPast(models.Model):
@@ -142,6 +145,9 @@ class FplElementSummaryFixture(models.Model):
             team_h = rec.fixture_id.team_h
             home_away = 'H' if rec.is_home else 'A'
             opponent_team = team_h if rec.element_id.fpl_team_id != team_h else team_a
-            
+
+            if not opponent_team:
+                rec.opponent_team_display = False
+                continue
             opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{opponent_team.code}.svg'
-            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{opponent_team.short_name + " " + f"({home_away})"}</span>'
+            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{opponent_team.short_name} ({home_away})</span>'

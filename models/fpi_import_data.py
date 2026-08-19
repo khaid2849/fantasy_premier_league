@@ -163,25 +163,20 @@ class FplImportData(models.Model, FPLApiMixin):
                 phases_model.create(vals)
         _logger.info(f"Synced {len(phases_data)} phases")
     
-    def _get_photo_png(self, code, path):            
+    def _get_photo_png(self, code, path):
         try:
             team_photo_file = file_path(f'{path}/{code}.png')
-            if not team_photo_file:
-                _logger.warning(f"Photo file not found for code: {code} in path: {path}")
-                return False
-                
-            if not os.path.exists(team_photo_file):
-                return False
-            
+        except FileNotFoundError:
+            # Expected/benign: the image hasn't been downloaded yet (cron
+            # hasn't run for this code, or it doesn't have one available).
+            return False
+
+        try:
             with open(team_photo_file, 'rb') as file:
                 png_content = file.read()
-                
-            photo_base64 = base64.b64encode(png_content)
-            
-            return photo_base64
-            
+            return base64.b64encode(png_content)
         except Exception as e:
-            _logger.error(f"Error loading photo for code {code}: {str(e)} in path: {file_path}")
+            _logger.error(f"Error loading photo for code {code}: {str(e)} in path: {path}")
             return False
     
     def _sync_teams_data(self, teams_data):
@@ -403,20 +398,17 @@ class FplImportData(models.Model, FPLApiMixin):
             url_image = f'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
             
             save_in_path = os.path.join(base_path, f'{player.opta_code}.png')
-            
-            if not os.path.exists(save_in_path):
-                try:
-                    download_image = requests.get(url_image, timeout=10)
-                    if download_image.status_code == 200:
-                        with open(save_in_path, 'wb') as file:
-                            file.write(download_image.content)
-                        _logger.info(f"Downloaded avatar for player {player.opta_code}")
-                    else:
-                        _logger.warning(f"Failed to download avatar for player {player.opta_code} - Status code: {download_image.status_code}")
-                except Exception as e:
-                    _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
-            else:
-                _logger.info(f"Avatar already exists for player {player.opta_code}")
+
+            try:
+                download_image = requests.get(url_image, timeout=10)
+                if download_image.status_code == 200:
+                    with open(save_in_path, 'wb') as file:
+                        file.write(download_image.content)
+                    _logger.info(f"Downloaded avatar for player {player.opta_code}")
+                else:
+                    _logger.warning(f"Failed to download avatar for player {player.opta_code} - Status code: {download_image.status_code}")
+            except Exception as e:
+                _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
 
     def download_team_logo(self):
         """Download team badges as SVG (kept as the canonical static asset for
@@ -441,10 +433,6 @@ class FplImportData(models.Model, FPLApiMixin):
         for team in teams:
             svg_path = os.path.join(base_path, f'{team.code}.svg')
             png_path = os.path.join(base_path, f'{team.code}.png')
-
-            if os.path.exists(svg_path) and os.path.exists(png_path):
-                _logger.info(f"Logo already exists for team code {team.code}")
-                continue
 
             url_image = f'https://resources.premierleague.com/premierleague25/badges-alt/{team.code}.svg'
 
@@ -494,10 +482,6 @@ class FplImportData(models.Model, FPLApiMixin):
             for kind, remote_tpl, local_tpl in shirt_variants:
                 local_name = local_tpl.format(code=team.code)
                 save_in_path = os.path.join(base_path, local_name)
-
-                if os.path.exists(save_in_path):
-                    _logger.info(f"{kind.capitalize()} shirt already exists for team code {team.code}")
-                    continue
 
                 remote_name = remote_tpl.format(code=team.code)
                 url_image = f'https://fantasy.premierleague.com/dist/img/shirts/standard/{remote_name}'

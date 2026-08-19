@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="fantasy_premier_league.fpl_bot_partner" model="res.partner">
+            <field name="name">FplBot</field>
+            <field name="image_1920" type="base64" file="fantasy_premier_league/static/description/fplbot.png"/>
+        </record>
+
+        <record model="res.users" id="fantasy_premier_league.fpl_user_root">
+            <field name="partner_id" ref="fantasy_premier_league.fpl_bot_partner"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="company_ids" eval="[Command.link(ref('base.main_company'))]"/>
+            <field name="email">fplbot@example.com</field>
+            <field name="login">fpl_bot</field>
+        </record>
+    </data>
+</odoo>

@@ -25,10 +25,37 @@
     <menuitem id="menu_fpl_elements_top_scorers" name="Top Scorers" parent="menu_league_info_root" sequence="3" action="fantasy_premier_league.fpl_elements_top_scorers_view_action"/>
     <menuitem id="menu_fpl_elements_top_assists" name="Top Assists" parent="menu_league_info_root" sequence="4" action="fantasy_premier_league.fpl_elements_top_assists_view_action"/>
 
+<<<<<<< Updated upstream
     <menuitem id="menu_fpl_report_root" name="Reports" parent="menu_fpl_root" sequence="7"/>
     <menuitem id="menu_fpl_report_elements" name="Players" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_elements_view_report_action" sequence="1"/>
     <!-- <menuitem id="menu_fpl_report_manager_team" name="Manager Team" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_manager_team_view_action" sequence="2"/>
     <menuitem id="menu_fpl_report_league_standings" name="League Standings" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_league_standings_view_action" sequence="3"/>
     <menuitem id="menu_fpl_report_gameweek_fixtures" name="Gameweek Fixtures" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_gameweek_fixtures_view_action" sequence="4"/> -->
 
+=======
+    <menuitem id="menu_fpl_analytics_root" name="Analytics" parent="menu_fpl_root" sequence="11"/>
+
+    <!-- Teams Analytics Menu -->
+    <menuitem id="menu_fpl_teams_analytics_root" name="Teams Analytics" parent="menu_fpl_analytics_root" sequence="1"/>
+    <menuitem id="menu_fpl_teams_performance" name="Teams Performance" parent="menu_fpl_teams_analytics_root" sequence="1" action="fantasy_premier_league.fpl_teams_analytics_action"/>
+    <menuitem id="menu_fpl_teams_strength" name="Teams Strength" parent="menu_fpl_teams_analytics_root" sequence="2" action="fantasy_premier_league.fpl_teams_strength_analytics_action"/>
+
+    <!-- Players Analytics Menu -->
+    <menuitem id="menu_fpl_players_analytics_root" name="Players Analytics" parent="menu_fpl_analytics_root" sequence="2"/>
+    <menuitem id="menu_fpl_players_performance" name="Players Performance" parent="menu_fpl_players_analytics_root" sequence="1" action="fantasy_premier_league.fpl_players_analytics_action"/>
+    <menuitem id="menu_fpl_players_position" name="Players by Position" parent="menu_fpl_players_analytics_root" sequence="2" action="fantasy_premier_league.fpl_players_position_analytics_action"/>
+    <menuitem id="menu_fpl_players_cost_performance" name="Cost vs Performance" parent="menu_fpl_players_analytics_root" sequence="3" action="fantasy_premier_league.fpl_players_cost_analytics_action"/>
+    <menuitem id="menu_fpl_player_history" name="Player History" parent="menu_fpl_players_analytics_root" sequence="4" action="fantasy_premier_league.fpl_player_history_analytics_action"/>
+
+    <!-- Gameweek Analytics Menu -->
+    <menuitem id="menu_fpl_gameweek_analytics_root" name="Gameweek Analytics" parent="menu_fpl_analytics_root" sequence="3"/>
+    <menuitem id="menu_fpl_fixtures_analytics" name="Fixtures Analytics" parent="menu_fpl_gameweek_analytics_root" sequence="1" action="fantasy_premier_league.fpl_fixtures_analytics_action"/>
+    <menuitem id="menu_fpl_goals_analytics" name="Goals Analysis" parent="menu_fpl_gameweek_analytics_root" sequence="2" action="fantasy_premier_league.fpl_gameweek_goals_analytics_action"/>
+    <menuitem id="menu_fpl_difficulty_analytics" name="Difficulty Analysis" parent="menu_fpl_gameweek_analytics_root" sequence="3" action="fantasy_premier_league.fpl_fixtures_difficulty_analytics_action"/>
+
+    <!-- Manager Analytics Menu -->
+    <menuitem id="menu_fpl_manager_analytics_root" name="Manager Analytics" parent="menu_fpl_analytics_root" sequence="4"/>
+    <menuitem id="menu_fpl_manager_performance" name="Manager Performance" parent="menu_fpl_manager_analytics_root" sequence="1" action="fantasy_premier_league.fpl_manager_performance_analytics_action"/>
+    <menuitem id="menu_fpl_manager_rank" name="Manager Rank Trend" parent="menu_fpl_manager_analytics_root" sequence="2" action="fantasy_premier_league.fpl_manager_rank_analytics_action"/>
+>>>>>>> Stashed changes
 </odoo>

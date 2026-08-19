@@ -108,7 +108,12 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
                         st.update({'pick_line_id': pick_line.id,})
 
                     self.env['fpl.element.stats'].create(stat_vals)
-                    pick_line.update({'gw_fixture_id': fixture.id, 'total_points': el.get('stats').get('total_points')})
+                    pick_line.update(
+                        {
+                            'gw_fixture_id': fixture.id, 
+                            'total_points': el.get('stats').get('total_points') * 2 if pick_line.is_captain  else el.get('stats').get('total_points')
+                        }
+                    )
                     
         except FPLApiException as e:
             _logger.error(f"Failed to sync gameweek element stats data: {str(e)}")

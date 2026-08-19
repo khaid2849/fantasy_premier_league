@@ -17,12 +17,14 @@
         'security/ir.model.access.csv',
 
         'data/ir_cron.xml',
+        'data/data.xml',
 
         'views/fpl_manager_team_view.xml',
         'views/fpl_teams_view.xml',
         'views/fpl_elements_view.xml',
         'views/fpl_gameweek_fixtures_view.xml',
         'views/fpl_leagues_view.xml',
+        'views/fpl_analytics_views.xml',
         'views/menuitem.xml',
 
         'wizards/views/fpl_manager_team_wizard_view.xml',

@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Teams Analytics Views -->
+    <!-- Teams Performance Pivot View -->
+    <record id="fpl_teams_analytics_pivot_view" model="ir.ui.view">
+        <field name="name">Teams Performance Analytics</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <pivot string="Teams Performance Analytics">
+                <field name="name" type="row"/>
+                <field name="points" type="measure"/>
+                <field name="win" type="measure"/>
+                <field name="draw" type="measure"/>
+                <field name="loss" type="measure"/>
+                <field name="played" type="measure"/>
+                <field name="strength" type="measure"/>
+                <field name="strength_overall_home" type="measure"/>
+                <field name="strength_overall_away" type="measure"/>
+                <field name="strength_attack_home" type="measure"/>
+                <field name="strength_attack_away" type="measure"/>
+                <field name="strength_defence_home" type="measure"/>
+                <field name="strength_defence_away" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Teams Performance Graph View -->
+    <record id="fpl_teams_analytics_graph_view" model="ir.ui.view">
+        <field name="name">Teams Performance Graph</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <graph string="Teams Performance" type="bar">
+                <field name="name"/>
+                <field name="points" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Teams Strength Analysis Graph -->
+    <record id="fpl_teams_strength_graph_view" model="ir.ui.view">
+        <field name="name">Teams Strength Analysis</field>
+        <field name="model">fpl.teams</field>
+        <field name="arch" type="xml">
+            <graph string="Teams Strength Analysis" type="line">
+                <field name="name"/>
+                <field name="strength_overall_home" type="measure"/>
+                <field name="strength_overall_away" type="measure"/>
+                <field name="strength_attack_home" type="measure"/>
+                <field name="strength_attack_away" type="measure"/>
+                <field name="strength_defence_home" type="measure"/>
+                <field name="strength_defence_away" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Teams Analytics Action -->
+    <record id="fpl_teams_analytics_action" model="ir.actions.act_window">
+        <field name="name">Teams Analytics</field>
+        <field name="res_model">fpl.teams</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'pivot', 'view_id': ref('fpl_teams_analytics_pivot_view')}),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_teams_analytics_graph_view')})]"/>
+    </record>
+
+    <!-- Teams Strength Analytics Action -->
+    <record id="fpl_teams_strength_analytics_action" model="ir.actions.act_window">
+        <field name="name">Teams Strength Analytics</field>
+        <field name="res_model">fpl.teams</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_teams_strength_graph_view')})]"/>
+    </record>
+
+    <!-- Players Analytics Views -->
+    <!-- Players Performance Pivot View -->
+    <record id="fpl_players_analytics_pivot_view" model="ir.ui.view">
+        <field name="name">Players Performance Analytics</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <pivot string="Players Performance Analytics">
+                <field name="web_name" type="row"/>
+                <field name="fpl_team_id" type="col"/>
+                <field name="element_type_id" type="col"/>
+                <field name="total_points" type="measure"/>
+                <field name="event_points" type="measure"/>
+                <field name="goals_scored" type="measure"/>
+                <field name="assists" type="measure"/>
+                <field name="clean_sheets" type="measure"/>
+                <field name="minutes" type="measure"/>
+                <field name="now_cost" type="measure"/>
+                <field name="points_per_game" type="measure"/>
+                <field name="transfers_in" type="measure"/>
+                <field name="transfers_out" type="measure"/>
+                <field name="bonus" type="measure"/>
+                <field name="bps" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Players Performance Graph View -->
+    <record id="fpl_players_analytics_graph_view" model="ir.ui.view">
+        <field name="name">Players Performance Graph</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <graph string="Players Performance" type="bar">
+                <field name="fpl_team_id"/>
+                <field name="total_points" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Players Position Analysis -->
+    <record id="fpl_players_position_graph_view" model="ir.ui.view">
+        <field name="name">Players by Position Analysis</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <graph string="Players by Position" type="pie">
+                <field name="element_type_id"/>
+                <field name="total_points" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Players Cost vs Performance -->
+    <record id="fpl_players_cost_performance_graph_view" model="ir.ui.view">
+        <field name="name">Players Cost vs Performance</field>
+        <field name="model">fpl.elements</field>
+        <field name="arch" type="xml">
+            <graph string="Cost vs Performance" type="line">
+                <field name="now_cost"/>
+                <field name="points_per_game" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Players Analytics Action -->
+    <record id="fpl_players_analytics_action" model="ir.actions.act_window">
+        <field name="name">Players Analytics</field>
+        <field name="res_model">fpl.elements</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'pivot', 'view_id': ref('fpl_players_analytics_pivot_view')}),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_players_analytics_graph_view')})]"/>
+    </record>
+
+    <!-- Players Position Analytics Action -->
+    <record id="fpl_players_position_analytics_action" model="ir.actions.act_window">
+        <field name="name">Players by Position</field>
+        <field name="res_model">fpl.elements</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_players_position_graph_view')})]"/>
+    </record>
+
+    <!-- Players Cost Performance Analytics Action -->
+    <record id="fpl_players_cost_analytics_action" model="ir.actions.act_window">
+        <field name="name">Cost vs Performance</field>
+        <field name="res_model">fpl.elements</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_players_cost_performance_graph_view')})]"/>
+    </record>
+
+    <!-- Gameweek Fixtures Analytics Views -->
+    <!-- Fixtures Analytics Pivot View -->
+    <record id="fpl_fixtures_analytics_pivot_view" model="ir.ui.view">
+        <field name="name">Fixtures Analytics</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <pivot string="Fixtures Analytics">
+                <field name="gameweek" type="row"/>
+                <field name="team_h" type="row"/>
+                <field name="team_a" type="row"/>
+                <field name="finished" type="col"/>
+                <field name="team_h_score" type="measure"/>
+                <field name="team_a_score" type="measure"/>
+                <field name="minutes" type="measure"/>
+                <field name="team_h_difficulty" type="measure"/>
+                <field name="team_a_difficulty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Goals Scored Analysis -->
+    <record id="fpl_fixtures_goals_graph_view" model="ir.ui.view">
+        <field name="name">Goals Scored Analysis</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <graph string="Goals per Gameweek" type="bar">
+                <field name="gameweek"/>
+                <field name="team_h_score" type="measure"/>
+                <field name="team_a_score" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Fixtures Difficulty Analysis -->
+    <record id="fpl_fixtures_difficulty_graph_view" model="ir.ui.view">
+        <field name="name">Fixtures Difficulty Analysis</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <graph string="Average Fixture Difficulty" type="line">
+                <field name="gameweek"/>
+                <field name="team_h_difficulty" type="measure"/>
+                <field name="team_a_difficulty" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Fixtures Analytics Action -->
+    <record id="fpl_fixtures_analytics_action" model="ir.actions.act_window">
+        <field name="name">Fixtures Analytics</field>
+        <field name="res_model">fpl.gameweek.fixtures</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'pivot', 'view_id': ref('fpl_fixtures_analytics_pivot_view')}),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_fixtures_goals_graph_view')})]"/>
+    </record>
+
+    <!-- Gameweek Goals Analytics Action -->
+    <record id="fpl_gameweek_goals_analytics_action" model="ir.actions.act_window">
+        <field name="name">Goals Analysis</field>
+        <field name="res_model">fpl.gameweek.fixtures</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_fixtures_goals_graph_view')})]"/>
+    </record>
+
+    <!-- Fixtures Difficulty Analytics Action -->
+    <record id="fpl_fixtures_difficulty_analytics_action" model="ir.actions.act_window">
+        <field name="name">Difficulty Analysis</field>
+        <field name="res_model">fpl.gameweek.fixtures</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_fixtures_difficulty_graph_view')})]"/>
+    </record>
+
+    <!-- Manager Performance Analytics Views -->
+    <!-- Manager Picks Performance Pivot -->
+    <record id="fpl_manager_performance_pivot_view" model="ir.ui.view">
+        <field name="name">Manager Performance Analytics</field>
+        <field name="model">fpl.gameweek.picks</field>
+        <field name="arch" type="xml">
+            <pivot string="Manager Performance Analytics">
+                <field name="manager_id" type="row"/>
+                <field name="event_id" type="col"/>
+                <field name="points" type="measure"/>
+                <field name="total_points" type="measure"/>
+                <field name="rank" type="measure"/>
+                <field name="overall_rank" type="measure"/>
+                <field name="value" type="measure"/>
+                <field name="bank" type="measure"/>
+                <field name="event_transfers" type="measure"/>
+                <field name="event_transfers_cost" type="measure"/>
+                <field name="points_on_bench" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Manager Performance Trend Graph -->
+    <record id="fpl_manager_performance_graph_view" model="ir.ui.view">
+        <field name="name">Manager Performance Trend</field>
+        <field name="model">fpl.gameweek.picks</field>
+        <field name="arch" type="xml">
+            <graph string="Manager Performance Trend" type="line">
+                <field name="event_id"/>
+                <field name="points" type="measure"/>
+                <field name="total_points" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Manager Rank Trend Graph -->
+    <record id="fpl_manager_rank_graph_view" model="ir.ui.view">
+        <field name="name">Manager Rank Trend</field>
+        <field name="model">fpl.gameweek.picks</field>
+        <field name="arch" type="xml">
+            <graph string="Manager Rank Trend" type="line">
+                <field name="event_id"/>
+                <field name="rank" type="measure"/>
+                <field name="overall_rank" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Manager Performance Analytics Action -->
+    <record id="fpl_manager_performance_analytics_action" model="ir.actions.act_window">
+        <field name="name">Manager Performance</field>
+        <field name="res_model">fpl.gameweek.picks</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'pivot', 'view_id': ref('fpl_manager_performance_pivot_view')}),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_manager_performance_graph_view')})]"/>
+    </record>
+
+    <!-- Manager Rank Analytics Action -->
+    <record id="fpl_manager_rank_analytics_action" model="ir.actions.act_window">
+        <field name="name">Manager Rank Trend</field>
+        <field name="res_model">fpl.gameweek.picks</field>
+        <field name="view_mode">graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_manager_rank_graph_view')})]"/>
+    </record>
+
+    <!-- Player History Analytics Views -->
+    <!-- Player History Performance Pivot -->
+    <record id="fpl_player_history_pivot_view" model="ir.ui.view">
+        <field name="name">Player History Analytics</field>
+        <field name="model">fpl.element.summary.history</field>
+        <field name="arch" type="xml">
+            <pivot string="Player History Analytics">
+                <field name="element_id" type="row"/>
+                <field name="round" type="col"/>
+                <field name="fixture_id" type="col"/>
+                <field name="total_points" type="measure"/>
+                <field name="goals_scored" type="measure"/>
+                <field name="assists" type="measure"/>
+                <field name="clean_sheets" type="measure"/>
+                <field name="minutes" type="measure"/>
+                <field name="bonus" type="measure"/>
+                <field name="bps" type="measure"/>
+                <field name="influence" type="measure"/>
+                <field name="creativity" type="measure"/>
+                <field name="threat" type="measure"/>
+                <field name="ict_index" type="measure"/>
+                <field name="value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Player History Performance Graph -->
+    <record id="fpl_player_history_graph_view" model="ir.ui.view">
+        <field name="name">Player History Performance</field>
+        <field name="model">fpl.element.summary.history</field>
+        <field name="arch" type="xml">
+            <graph string="Player Performance Over Time" type="line">
+                <field name="round"/>
+                <field name="total_points" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Player History Analytics Action -->
+    <record id="fpl_player_history_analytics_action" model="ir.actions.act_window">
+        <field name="name">Player History Analytics</field>
+        <field name="res_model">fpl.element.summary.history</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                      (0, 0, {'view_mode': 'pivot', 'view_id': ref('fpl_player_history_pivot_view')}),
+                                      (0, 0, {'view_mode': 'graph', 'view_id': ref('fpl_player_history_graph_view')})]"/>
+    </record>
+
+</odoo>

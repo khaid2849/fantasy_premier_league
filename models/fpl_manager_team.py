@@ -31,7 +31,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     manger_data_id = fields.Integer(string=_('ID'))
     region = fields.Char(string=_('Region'), tracking=True)
     country_id = fields.Many2one('res.country', string=_('Country'), tracking=True)
-    entry_email = fields.Char(string=_('Entry Email'), tracking=True)
+    entry_email = fields.Boolean(string=_('Entry Email'), tracking=True)
     entry_language = fields.Char(string=_('Entry Language'), tracking=True)
     sso_id = fields.Char(string=_('SSO ID'), tracking=True)
     #Manager Entry Summary
@@ -516,8 +516,8 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             'current_event': data.get('current_event'),
             'name': data.get('name'),
             'name_change_blocked': data.get('name_change_blocked'),
-            'last_deadline_bank': data.get('last_deadline_bank') / 10,
-            'last_deadline_value': data.get('last_deadline_value') / 10,
+            'last_deadline_bank': data.get('last_deadline_bank') / 10 if data.get('last_deadline_bank') else None,
+            'last_deadline_value': data.get('last_deadline_value') / 10 if data.get('last_deadline_value') else None,
             'last_deadline_total_transfers': data.get('last_deadline_total_transfers'),
             'league_classic_ids': [(6, 0, league_classic_ids)],
             'league_h2h_ids': [(6, 0, league_h2h_ids)],

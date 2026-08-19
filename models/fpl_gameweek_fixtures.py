@@ -4,6 +4,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from .fpl_api_mixin import FPLApiMixin
 from ..services.fpl_api_client import FPLApiException
+from markupsafe import Markup
 from datetime import datetime
 
 _logger = logging.getLogger(__name__)
@@ -61,22 +62,27 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         for rec in self:
             rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name} vs {rec.team_a.name}'
 
-    def cron_get_data_gameweek_fixutres(self):
+    def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True):
         try:
-            for gameweek in range(1, 39):
+            if manual_gameweek:
+                gameweek = range(manual_gameweek, manual_gameweek + 1)
+            else:
+                gameweek = range(1, 39)
+
+            for gameweek in gameweek:
                 gameweek_fixtures = self.sync_from_fpl_api('get_gameweek_fixtures', gameweek)
                 
                 gw_start = min(gameweek_fixtures, key=lambda item: item['kickoff_time']).get('kickoff_time')
                 gw_end =  max(gameweek_fixtures, key=lambda item: item['kickoff_time']).get('kickoff_time')
 
-                if not datetime.fromisoformat(gw_start.replace('Z', ''))  < datetime.now() < datetime.fromisoformat(gw_end.replace('Z', '')):
+                if not datetime.fromisoformat(gw_start.replace('Z', ''))  < datetime.now() < datetime.fromisoformat(gw_end.replace('Z', '')) and not get_all:
                     continue
 
                 for fixture_data in gameweek_fixtures:
                     fixture_id = fixture_data.get('id')
                     exist_fixture = self.search([('gw_fixture_id', '=', fixture_id)])
                     
-                    if exist_fixture and exist_fixture.finished:
+                    if exist_fixture and exist_fixture.finished and not get_all:
                         continue
                     
                     old_data = self._get_fixture_snapshot(exist_fixture) if exist_fixture else {}
@@ -95,7 +101,8 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
                         self._process_fixture_stats(fixture_data.get('stats'), exist_fixture.id)
                         
                         if exist_fixture.started and not exist_fixture.finished:
-                            self._check_and_notify_live_updates(exist_fixture, old_data, old_stats)
+                            if send_live_notifications:
+                                self._check_and_notify_live_updates(exist_fixture, old_data, old_stats)
                         
         except FPLApiException as e:
             _logger.error(f"FPL API error during gameweek fixtures sync: {str(e)}")
@@ -279,7 +286,8 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     def _send_live_notifications(self, fixture, notifications):
         """Send live match notifications to all users using message_post"""
         try:
-            users = self.env['res.users'].search([])
+            odoobot_id = self.env['ir.model.data']._xmlid_to_res_id("fantasy_premier_league.fpl_bot_partner")
+            users = self.env['res.users'].search([('id', '!=', self.env.ref('fantasy_premier_league.fpl_user_root').id)])
             
             match_info = f"GW{fixture.gameweek}: {fixture.team_h.name} vs {fixture.team_a.name} ({fixture.minutes}')"
             
@@ -290,10 +298,12 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
                 
                 for user in users:
                     if user.partner_id:
-                        user.partner_id.message_post(
-                            body=message_body,
-                            subject=f"FPL Live Update: {fixture.team_h.name} vs {fixture.team_a.name}",
-                            message_type='notification',
+                        channel = self.env['discuss.channel'].channel_get([user.partner_id.id])
+                        channel.sudo().message_post(
+                            author_id=odoobot_id,
+                            body=Markup(message_body),
+                            subject=f"Fxiture Live Update: {fixture.team_h.name} vs {fixture.team_a.name}",
+                            message_type='comment',
                             subtype_xmlid='mail.mt_comment'
                         )
                 

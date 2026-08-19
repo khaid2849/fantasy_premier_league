@@ -25,14 +25,12 @@
     <menuitem id="menu_fpl_elements_top_scorers" name="Top Scorers" parent="menu_league_info_root" sequence="3" action="fantasy_premier_league.fpl_elements_top_scorers_view_action"/>
     <menuitem id="menu_fpl_elements_top_assists" name="Top Assists" parent="menu_league_info_root" sequence="4" action="fantasy_premier_league.fpl_elements_top_assists_view_action"/>
 
-<<<<<<< Updated upstream
     <menuitem id="menu_fpl_report_root" name="Reports" parent="menu_fpl_root" sequence="7"/>
     <menuitem id="menu_fpl_report_elements" name="Players" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_elements_view_report_action" sequence="1"/>
     <!-- <menuitem id="menu_fpl_report_manager_team" name="Manager Team" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_manager_team_view_action" sequence="2"/>
     <menuitem id="menu_fpl_report_league_standings" name="League Standings" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_league_standings_view_action" sequence="3"/>
     <menuitem id="menu_fpl_report_gameweek_fixtures" name="Gameweek Fixtures" parent="menu_fpl_report_root" action="fantasy_premier_league.fpl_report_gameweek_fixtures_view_action" sequence="4"/> -->
 
-=======
     <menuitem id="menu_fpl_analytics_root" name="Analytics" parent="menu_fpl_root" sequence="11"/>
 
     <!-- Teams Analytics Menu -->
@@ -57,5 +55,4 @@
     <menuitem id="menu_fpl_manager_analytics_root" name="Manager Analytics" parent="menu_fpl_analytics_root" sequence="4"/>
     <menuitem id="menu_fpl_manager_performance" name="Manager Performance" parent="menu_fpl_manager_analytics_root" sequence="1" action="fantasy_premier_league.fpl_manager_performance_analytics_action"/>
     <menuitem id="menu_fpl_manager_rank" name="Manager Rank Trend" parent="menu_fpl_manager_analytics_root" sequence="2" action="fantasy_premier_league.fpl_manager_rank_analytics_action"/>
->>>>>>> Stashed changes
 </odoo>

@@ -32,6 +32,9 @@
         'wizards/views/fpl_gameweek_pick_lines_wizard_view.xml',
     ],
     'demo': [],
+    'external_dependencies': {
+        'python': ['cairosvg'],
+    },
     'installable': True,
     'application': True,
     'icon': '/fantasy_premier_league/static/description/icon.png',

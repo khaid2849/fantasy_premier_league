@@ -21,4 +21,4 @@ class FPLPicks(models.Model):
     @api.depends('team_id')
     def _compute_team_display(self):
         for rec in self:
-            rec.team_display = f'<img src="/fantasy_premier_league/static/src/img/teams_logo/{rec.team_id.code}.png" style="width: 20px; height: 20px; border-radius: 10px;"/> <span style="font-size: 12px;">{rec.team_id.short_name}</span>'
+            rec.team_display = f'<img src="/fantasy_premier_league/static/src/img/teams_logo/{rec.team_id.code}.svg" style="width: 20px; height: 20px; border-radius: 10px;"/> <span style="font-size: 12px;">{rec.team_id.short_name}</span>'

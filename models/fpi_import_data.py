@@ -3,7 +3,12 @@ import logging
 import os
 import requests
 
-from odoo import models, api
+try:
+    import cairosvg
+except ImportError:
+    cairosvg = None
+
+from odoo import models, api, _
 from odoo.exceptions import UserError
 from odoo.tools.misc import file_path
 from .fpl_api_mixin import FPLApiMixin
@@ -412,3 +417,98 @@ class FplImportData(models.Model, FPLApiMixin):
                     _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
             else:
                 _logger.info(f"Avatar already exists for player {player.opta_code}")
+
+    def download_team_logo(self):
+        """Download team badges as SVG (kept as the canonical static asset for
+        direct URL/background-image usage) and rasterize a PNG copy so the
+        existing `_get_photo_png`/`_sync_teams_data` flow keeps feeding the
+        `fpl.teams.photo` Image field without any changes to that flow.
+
+        Note: the FPL CDN keys badge files by the club's `code` field, not by
+        `team_id` (verified: badges-alt/43.svg = Man City, whose team_id is 15).
+        """
+        if cairosvg is None:
+            _logger.error("cairosvg is not installed - cannot rasterize team logos")
+            raise UserError(_("Missing dependency 'cairosvg'. Install it (pip install cairosvg) to enable team logo download."))
+
+        teams = self.env['fpl.teams'].search([('code', '!=', False)])
+
+        base_path = file_path('fantasy_premier_league/static/src/img/teams_logo')
+        if not os.path.exists(base_path):
+            os.makedirs(base_path, exist_ok=True)
+            _logger.info(f"Created directory: {base_path}")
+
+        for team in teams:
+            svg_path = os.path.join(base_path, f'{team.code}.svg')
+            png_path = os.path.join(base_path, f'{team.code}.png')
+
+            if os.path.exists(svg_path) and os.path.exists(png_path):
+                _logger.info(f"Logo already exists for team code {team.code}")
+                continue
+
+            url_image = f'https://resources.premierleague.com/premierleague25/badges-alt/{team.code}.svg'
+
+            try:
+                download_image = requests.get(url_image, timeout=10)
+                if download_image.status_code == 200:
+                    svg_content = download_image.content
+                    with open(svg_path, 'wb') as file:
+                        file.write(svg_content)
+
+                    png_content = cairosvg.svg2png(bytestring=svg_content)
+                    with open(png_path, 'wb') as file:
+                        file.write(png_content)
+
+                    _logger.info(f"Downloaded logo for team code {team.code}")
+                else:
+                    _logger.warning(f"Failed to download logo for team code {team.code} - Status code: {download_image.status_code}")
+            except Exception as e:
+                _logger.error(f"Error downloading logo for team code {team.code}: {str(e)}")
+
+    def download_team_shirts(self):
+        """Download outfield and goalkeeper shirt kits per team.
+
+        Note: like the badge CDN, shirt files are keyed by the club's `code`
+        field, not `team_id` (verified: shirt_43-110.webp = Man City's kit,
+        whose team_id is 15; shirt_15-110.webp returns 404).
+
+        Only the 110px variant is downloaded - it matches the resolution of
+        the shirt images already bundled with the module and consumed by the
+        pitch-view formation template. The 66px variant is FPL's smaller
+        list/dropdown icon size and isn't used anywhere in this module.
+        """
+        teams = self.env['fpl.teams'].search([('code', '!=', False)])
+
+        base_path = file_path('fantasy_premier_league/static/src/img/shirt')
+        if not os.path.exists(base_path):
+            os.makedirs(base_path, exist_ok=True)
+            _logger.info(f"Created directory: {base_path}")
+
+        # (label, remote filename template on the FPL CDN, local filename template expected by the pitch view templates)
+        shirt_variants = [
+            ('outfield', 'shirt_{code}-110.webp', 'shirt_{code}.webp'),
+            ('goalkeeper', 'shirt_{code}_1-110.webp', 'shirt_{code}_GKP.webp'),
+        ]
+
+        for team in teams:
+            for kind, remote_tpl, local_tpl in shirt_variants:
+                local_name = local_tpl.format(code=team.code)
+                save_in_path = os.path.join(base_path, local_name)
+
+                if os.path.exists(save_in_path):
+                    _logger.info(f"{kind.capitalize()} shirt already exists for team code {team.code}")
+                    continue
+
+                remote_name = remote_tpl.format(code=team.code)
+                url_image = f'https://fantasy.premierleague.com/dist/img/shirts/standard/{remote_name}'
+
+                try:
+                    download_image = requests.get(url_image, timeout=10)
+                    if download_image.status_code == 200:
+                        with open(save_in_path, 'wb') as file:
+                            file.write(download_image.content)
+                        _logger.info(f"Downloaded {kind} shirt for team code {team.code}")
+                    else:
+                        _logger.warning(f"Failed to download {kind} shirt for team code {team.code} - Status code: {download_image.status_code}")
+                except Exception as e:
+                    _logger.error(f"Error downloading {kind} shirt for team code {team.code}: {str(e)}")

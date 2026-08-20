@@ -5,7 +5,8 @@ from odoo.exceptions import UserError
 from .fpl_api_mixin import FPLApiMixin
 from ..services.fpl_api_client import FPLApiException
 from markupsafe import Markup
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 
 _logger = logging.getLogger(__name__)
 
@@ -58,10 +59,33 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h_bonus_ids = fields.One2many('fpl.team.h.bonus', 'gw_fixture_id', sting=_('Home Team Bonus'))
     team_h_bps_ids = fields.One2many('fpl.team.h.bps', 'gw_fixture_id', sting=_('Home Team Bonus Points System'))
     team_h_defensive_contribution_ids = fields.One2many('fpl.team.h.defensive.contribution', 'gw_fixture_id', sting=_('Home Team Defensive Contribution'))
+    current_season = fields.Char(string=_('Current Season'), compute='_compute_current_season')
+    match_result_display = fields.Html(string=_('Match Result'), compute='_compute_match_result_display')
+    
+    @api.depends()
+    def _compute_match_result_display(self):
+        user_tz = pytz.timezone(self.env.user.tz or 'UTC')
+        for rec in self:
+            if rec.finished:
+                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{rec.team_h.photo}' style='width: 18px;border-radius: 10px;'/> {rec.team_h_score} - {rec.team_a_score} <img src='{rec.team_a.photo}' style='width: 18px;border-radius: 10px;'/> <strong>{rec.team_a.name}</strong>"
+            else:
+                local_kickoff = pytz.utc.localize(rec.kickoff_time).astimezone(user_tz)
+                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{rec.team_h.photo}' style='width: 18px;border-radius: 10px;'/> <span style='font-weight: bold; color: #34495E; background: #ECF0F1; border-radius: 20px;'>{local_kickoff.strftime('%H:%M')}</span> <strong>{rec.team_a.name}</strong> <img src='{rec.team_a.photo}' style='width: 18px;border-radius: 10px;'/>"
 
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name} vs {rec.team_a.name}'
+    
+    @api.depends()
+    def _compute_current_season(self):
+        events_model = self.env['fpl.events']
+        current_event = events_model.search([('is_current', '=', True)], limit=1)
+        if not current_event:
+            # Off-season / before the first deadline of the new season: fall
+            # back to the most recent known event.
+            current_event = events_model.search([], order='deadline_time desc', limit=1)
+        for rec in self:
+            rec.current_season = current_event.season
 
     def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True):
         try:

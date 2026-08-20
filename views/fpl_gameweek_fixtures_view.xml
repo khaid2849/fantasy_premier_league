@@ -12,15 +12,6 @@
                     <field name="team_a_code" invisible="1"/>
                     <widget name="web_ribbon" title="Full time" bg_color="text-bg-success" invisible="not finished"/>
                     <widget name="web_ribbon" title="Live" bg_color="text-bg-danger" invisible="finished or not started"/>
-                    
-                    <!-- <div class="oe_button_box" name="button_box">
-                
-                        <button type="object" name="action_open_players_statistics" class="oe_stat_button" icon="fa-bar-chart">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Players Statistics</span>
-                            </div>
-                        </button>
-                    </div> -->
 
                     <div class="oe_title" style="text-align: center; padding: 20px 0;">
                         <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
@@ -429,11 +420,40 @@
         </field>
     </record>
 
-    <record id="fpl_gameweek_fixtures_view_action" model="ir.actions.act_window">
+    <record id="fpl_histroy_fixtures_tree" model="ir.ui.view">
+        <field name="name">fpl.gameweek.fixtures.tree</field>
+        <field name="model">fpl.gameweek.fixtures</field>
+        <field name="arch" type="xml">
+            <list string="Premier League Fixtures History" create="0" edit="0" delete="0">
+                <field name="match_result_display"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_histroy_fixtures_action" model="ir.actions.act_window">
+        <field name="name">Premier League Fixtures History</field>
+        <field name="res_model">fpl.gameweek.fixtures</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('fantasy_premier_league.fpl_histroy_fixtures_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('fantasy_premier_league.view_fpl_gameweek_fixtures_form')})]"/>
+        <field name="context">{'search_default_group_by_season': 1,'search_default_group_by_gameweek': 1, 'search_default_group_by_date': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Premier League fixtures found!
+            </p>
+            <p>
+                Premier League fixtures will be automatically synced from the FPL API.
+            </p>
+        </field>
+    </record>
+
+    <record id="fpl_gameweek_current_fixtures_view_action" model="ir.actions.act_window">
         <field name="name">Premier League Fixtures</field>
         <field name="res_model">fpl.gameweek.fixtures</field>
         <field name="view_mode">kanban,calendar,form</field>
-        <field name="context">{'search_default_group_by_season': 1, 'search_default_group_by_gameweek': 1}</field>
+        <field name="domain">[('current_season', '=', 'event_id.season')]</field>
+        <field name="context">{'search_default_group_by_gameweek': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No Premier League fixtures found!

@@ -612,7 +612,9 @@
                             </page>
 
                             <page string="Fixutres">
-                                <field name="fixutres_ids" widget="one2many" readonly="1" nolabel="1">
+                                <field name="current_season" invisible="1"/>
+                                <field name="fixutres_ids" widget="one2many" readonly="1" nolabel="1"
+                                       domain="[('season', '=', current_season)]">
                                     <list>
                                         <field name="kickoff_time" string="Date"/>
                                         <field name="gameweek" string="GW"/>

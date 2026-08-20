@@ -128,7 +128,19 @@ class FPLElements(models.Model, FPLApiMixin):
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
     fixutres_ids = fields.One2many('fpl.element.summary.fixture', 'element_id', string=_('Fixutres IDs'))
+    current_season = fields.Char(string=_('Current Season'), compute='_compute_current_season')
     summary_name_form = fields.Html(compute='_compute_summary_name_form')
+
+    @api.depends()
+    def _compute_current_season(self):
+        events_model = self.env['fpl.events']
+        current_event = events_model.search([('is_current', '=', True)], limit=1)
+        if not current_event:
+            # Off-season / before the first deadline of the new season: fall
+            # back to the most recent known event.
+            current_event = events_model.search([], order='deadline_time desc', limit=1)
+        for rec in self:
+            rec.current_season = current_event.season
 
     @api.depends('first_name', 'second_name')
     def _compute_display_name(self):
@@ -211,7 +223,8 @@ class FPLElements(models.Model, FPLApiMixin):
                 'element_id': element.id,
                 'fixture_id': fixture_id.id,
                 'kickoff_time': fixture_id.kickoff_time,
-                'event_name': fixture_id.event_id.name
+                'event_name': fixture_id.event_id.name,
+                'event_id': fixture_id.event_id.id,
             })
             fixture.pop('id')
             fixture.pop('event')

@@ -4,9 +4,10 @@ class FPLEvents(models.Model):
     _name = 'fpl.events'
     _description = 'FPL Events'
 
-    event_id = fields.Integer(string=_('ID'))
+    event_id = fields.Integer(string=_('ID'), index=True)
     name = fields.Char(string=_('Name'))
     deadline_time = fields.Datetime(string=_('Deadline Time'))
+    season = fields.Char(string=_('Season'), compute='_compute_season', store=True, index=True)
     release_time = fields.Datetime(string=_('Release Time'))
     average_entry_score = fields.Float(string=_('Average Entry Score'))
     finished = fields.Boolean(string=_('Finished'))
@@ -32,3 +33,26 @@ class FPLEvents(models.Model):
     most_vice_captained = fields.Integer(string=_('Most Vice Captained'))
     chip_ids = fields.One2many('fpl.chips', 'event_id', string=_('Chip Plays'))
     event_chip_plays_ids = fields.One2many('fpl.event.chip.plays', 'event_id', string=_('Event Chip Plays'))
+
+    _sql_constraints = [
+        ('event_id_season_uniq', 'unique(event_id, season)',
+         'An event with this ID already exists for this season.'),
+    ]
+
+    @api.depends('deadline_time')
+    def _compute_season(self):
+        for rec in self:
+            rec.season = self._season_from_date(rec.deadline_time)
+
+    @api.model
+    def _season_from_date(self, date_value):
+        """English football season runs Aug-May, so a deadline in Jul-Dec
+        belongs to the season starting that year, and a deadline in Jan-Jun
+        belongs to the season that started the previous year.
+        """
+        if not date_value:
+            return False
+        year = date_value.year
+        if date_value.month >= 7:
+            return f"{year}/{year + 1}"
+        return f"{year - 1}/{year}"

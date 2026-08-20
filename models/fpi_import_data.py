@@ -88,12 +88,20 @@ class FplImportData(models.Model, FPLApiMixin):
         """Sync events data from API"""
         events_model = self.env['fpl.events']
         for event_data in events_data:
-            existing_event = events_model.search([('event_id', '=', event_data.get('id'))], limit=1)
-            
+            deadline_time = self._prase_datetime_values(event_data.get('deadline_time')) if event_data.get('deadline_time') else False
+            season = events_model._season_from_date(deadline_time)
+            # Match on (event_id, season): the FPL API reuses event_id 1-38 every
+            # season, so matching on event_id alone would overwrite last season's
+            # event with this season's data instead of creating a new one.
+            existing_event = events_model.search([
+                ('event_id', '=', event_data.get('id')),
+                ('season', '=', season),
+            ], limit=1)
+
             vals = {
                 'event_id': event_data.get('id'),
                 'name': event_data.get('name'),
-                'deadline_time': self._prase_datetime_values(event_data.get('deadline_time')) if event_data.get('deadline_time') else False,
+                'deadline_time': deadline_time,
                 'release_time': self._prase_datetime_values(event_data.get('release_time')) if event_data.get('release_time') else False,
                 'average_entry_score': event_data.get('average_entry_score'),
                 'finished': event_data.get('finished', False),

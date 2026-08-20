@@ -14,7 +14,8 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
 
     gameweek = fields.Integer(string=_('Gameweek'))
     code = fields.Char(string=_('Code'))
-    event_id = fields.Many2one('fpl.events', string=_('Gameweek'))
+    event_id = fields.Many2one('fpl.events', string=_('Gameweek'), index=True)
+    season = fields.Char(string=_('Season'), related='event_id.season', store=True, index=True)
     finished = fields.Boolean(string=_('Finished'))
     finished_provisional = fields.Boolean(string=_('Finished provisional'))
     gw_fixture_id = fields.Integer(string=_('Gameweek ID'))

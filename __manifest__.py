@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 {
     'name': 'Fantasy Premier League',
-    'version': '1.1',
+    'version': '1.2',
     'category': 'Fantasy Premier League',
     'sequence': 30,
     'summary': 'Manage Fantasy Premier League',

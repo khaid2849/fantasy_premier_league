@@ -66,11 +66,13 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     def _compute_match_result_display(self):
         user_tz = pytz.timezone(self.env.user.tz or 'UTC')
         for rec in self:
+            team_h_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_h.code}.svg'
+            team_a_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_a.code}.svg'
             if rec.finished:
-                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{rec.team_h.photo}' style='width: 18px;border-radius: 10px;'/> {rec.team_h_score} - {rec.team_a_score} <img src='{rec.team_a.photo}' style='width: 18px;border-radius: 10px;'/> <strong>{rec.team_a.name}</strong>"
+                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{team_h_src}' style='width: 20px;border-radius: 10px;'/> {rec.team_h_score} - {rec.team_a_score} <img src='{team_a_src}' style='width: 20px;border-radius: 10px;'/> <strong>{rec.team_a.name}</strong>"
             else:
                 local_kickoff = pytz.utc.localize(rec.kickoff_time).astimezone(user_tz)
-                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{rec.team_h.photo}' style='width: 18px;border-radius: 10px;'/> <span style='font-weight: bold; color: #34495E; background: #ECF0F1; border-radius: 20px;'>{local_kickoff.strftime('%H:%M')}</span> <strong>{rec.team_a.name}</strong> <img src='{rec.team_a.photo}' style='width: 18px;border-radius: 10px;'/>"
+                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{team_h_src}' style='width: 20px;border-radius: 10px;'/> <span style='font-weight: bold; color: #34495E;'>{local_kickoff.strftime('%H:%M')}</span> <strong>{rec.team_a.name}</strong> <img src='{team_a_src}' style='width: 20px;border-radius: 10px;'/>"
 
     def _compute_display_name(self):
         for rec in self:

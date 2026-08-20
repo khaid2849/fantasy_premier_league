@@ -1,4 +1,5 @@
 import base64
+import io
 import logging
 import os
 import requests
@@ -7,6 +8,8 @@ try:
     import cairosvg
 except ImportError:
     cairosvg = None
+
+from PIL import Image
 
 from odoo import models, api, _
 from odoo.exceptions import UserError
@@ -418,6 +421,17 @@ class FplImportData(models.Model, FPLApiMixin):
             except Exception as e:
                 _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
 
+    def _normalize_logo_png(self, png_bytes, size=100):
+        """Resize PNG to a fixed square canvas, preserving aspect ratio with transparent padding."""
+        img = Image.open(io.BytesIO(png_bytes)).convert('RGBA')
+        img.thumbnail((size, size), Image.LANCZOS)
+        canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        offset = ((size - img.width) // 2, (size - img.height) // 2)
+        canvas.paste(img, offset, img)
+        output = io.BytesIO()
+        canvas.save(output, format='PNG')
+        return output.getvalue()
+
     def download_team_logo(self):
         """Download team badges as SVG (kept as the canonical static asset for
         direct URL/background-image usage) and rasterize a PNG copy so the
@@ -452,6 +466,7 @@ class FplImportData(models.Model, FPLApiMixin):
                         file.write(svg_content)
 
                     png_content = cairosvg.svg2png(bytestring=svg_content)
+                    png_content = self._normalize_logo_png(png_content)
                     with open(png_path, 'wb') as file:
                         file.write(png_content)
 

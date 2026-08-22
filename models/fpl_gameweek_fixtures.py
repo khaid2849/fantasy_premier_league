@@ -68,7 +68,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         for rec in self:
             team_h_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_h.code}.svg'
             team_a_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_a.code}.svg'
-            if rec.finished:
+            if rec.team_h_score and rec.team_a_score and rec.started:
                 rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{team_h_src}' style='width: 20px;border-radius: 10px;'/> {rec.team_h_score} - {rec.team_a_score} <img src='{team_a_src}' style='width: 20px;border-radius: 10px;'/> <strong>{rec.team_a.name}</strong>"
             else:
                 local_kickoff = pytz.utc.localize(rec.kickoff_time).astimezone(user_tz)

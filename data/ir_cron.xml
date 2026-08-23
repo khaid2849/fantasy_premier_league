@@ -18,6 +18,14 @@
         <field name="user_id" ref="base.user_root"/>
         <field name="state">code</field>
         <field name="code">model.cron_get_data_gameweek_fixutres(get_all=False, manual_gameweek=None, send_live_notifications=True)</field>
+        <!-- interval_type only supports minutes/hours/days/.../months, and
+             the cron dispatcher itself only wakes up ~once a minute, so 1
+             minute is the floor this field can express - it is NOT the
+             real live-tracking cadence. During a live match the job loops
+             internally every ~2s and self-triggers its own immediate
+             re-run via ir.cron's trigger mechanism (see
+             cron_get_data_gameweek_fixutres's docstring); this interval is
+             only the fallback that notices a match has kicked off. -->
         <field name="interval_number">1</field>
         <field name="interval_type">minutes</field>
         <field name="active">True</field>

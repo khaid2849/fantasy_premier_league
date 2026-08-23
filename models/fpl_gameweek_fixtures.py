@@ -1,11 +1,12 @@
 import logging
+import time
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from .fpl_api_mixin import FPLApiMixin
 from ..services.fpl_api_client import FPLApiException
 from markupsafe import Markup
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 _logger = logging.getLogger(__name__)
@@ -89,54 +90,96 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         for rec in self:
             rec.current_season = current_event.season
 
-    def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True):
+    def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True,
+                                         live_poll_interval=2, live_poll_budget=50):
+        """Sync gameweek fixtures from the FPL API.
+
+        ``ir.cron`` has no sub-minute interval (the field only accepts
+        minutes/hours/days/..., and the cron dispatcher itself only wakes up
+        about once a minute), so genuine 1-2s live polling can't come from
+        the cron interval. Instead, when this runs as the scheduled
+        live-tracking job (no ``manual_gameweek``/``get_all``), it loops
+        internally every ``live_poll_interval`` seconds - committing after
+        each pass so the kanban bus push lands right away - for up to
+        ``live_poll_budget`` seconds. If a match is still live once that
+        budget runs out, it re-queues itself to run again immediately via
+        ``ir.cron``'s own trigger mechanism (see ``_trigger()`` in
+        ``ir_cron.py``) rather than waiting for the next scheduled minute.
+        Once nothing is live, it stops self-triggering and the normal
+        1-minute schedule takes back over as the "is anything live yet"
+        check.
+        """
+        if manual_gameweek or get_all:
+            gameweeks = [manual_gameweek] if manual_gameweek else range(1, 39)
+            self._poll_fixtures_once(gameweeks, get_all, send_live_notifications)
+            return
+
+        deadline = time.monotonic() + live_poll_budget
+        live_now = False
+        while True:
+            gameweeks = self._get_live_polling_gameweeks()
+            self._poll_fixtures_once(gameweeks, get_all=False, send_live_notifications=send_live_notifications)
+            self.env.cr.commit()
+
+            live_now = bool(self.search_count([
+                ('started', '=', True), ('finished_provisional', '=', False),
+            ]))
+            if not live_now or time.monotonic() >= deadline:
+                break
+            time.sleep(live_poll_interval)
+
+        if live_now:
+            self.env.ref('fantasy_premier_league.ir_cron_get_gameweek_fixtures')._trigger()
+
+    def _poll_fixtures_once(self, gameweeks, get_all, send_live_notifications):
+        """Single fetch-and-process pass over the given gameweeks."""
+        changed_fixtures = self.browse()
         try:
-            if manual_gameweek:
-                gameweek = range(manual_gameweek, manual_gameweek + 1)
-            else:
-                gameweek = range(1, 39)
-
-            for gameweek in gameweek:
+            for gameweek in gameweeks:
                 gameweek_fixtures = self.sync_from_fpl_api('get_gameweek_fixtures', gameweek)
-                
-                gw_start = min(gameweek_fixtures, key=lambda item: item['kickoff_time']).get('kickoff_time')
-                gw_end =  max(gameweek_fixtures, key=lambda item: item['kickoff_time']).get('kickoff_time')
-
-                if not datetime.fromisoformat(gw_start.replace('Z', ''))  < datetime.now() < datetime.fromisoformat(gw_end.replace('Z', '')) and not get_all:
+                if not gameweek_fixtures:
                     continue
 
                 for fixture_data in gameweek_fixtures:
                     fixture_id = fixture_data.get('id')
                     exist_fixture = self.search([('gw_fixture_id', '=', fixture_id)])
-                    
+
                     if exist_fixture and exist_fixture.finished and not get_all:
                         continue
-                    
+
                     old_data = self._get_fixture_snapshot(exist_fixture) if exist_fixture else {}
-                    
+
                     fixture_vals = self._update_gameweek_val(fixture_data)
                     fixture_vals.update({'gameweek': gameweek})
-                    
+
                     if exist_fixture:
                         exist_fixture.write(fixture_vals)
                     else:
                         new_fixture = self.create(fixture_vals)
                         exist_fixture = new_fixture
-                    
+
+                    if not old_data or self._get_fixture_snapshot(exist_fixture) != old_data:
+                        changed_fixtures |= exist_fixture
+
                     if fixture_data.get('stats'):
                         old_stats = self._get_stats_snapshot(exist_fixture.id) if old_data else {}
                         self._process_fixture_stats(fixture_data.get('stats'), exist_fixture.id)
-                        
+
                         if exist_fixture.started and not exist_fixture.finished:
                             if send_live_notifications:
                                 self._check_and_notify_live_updates(exist_fixture, old_data, old_stats)
-                        
+
+            if changed_fixtures:
+                self._notify_kanban_refresh(changed_fixtures)
+
         except FPLApiException as e:
             _logger.error(f"FPL API error during gameweek fixtures sync: {str(e)}")
             raise UserError(f"FPL API error during gameweek fixtures sync: {str(e)}")
         except Exception as e:
             _logger.error(f"Unexpected error during sync: {str(e)}")
             raise UserError(f"Unexpected error during sync: {str(e)}")
+
+        return changed_fixtures
     
     def _update_gameweek_val(self, data):
         event_id = self.env['fpl.events'].search([('event_id', '=', data.get('event'))], limit=1)
@@ -248,7 +291,40 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
             'team_h_score': fixture.team_h_score,
             'team_a_score': fixture.team_a_score,
             'minutes': fixture.minutes,
+            'started': fixture.started,
+            'finished_provisional': fixture.finished_provisional,
         }
+
+    def _get_live_polling_gameweeks(self):
+        """Gameweeks worth an FPL API call on this cron tick.
+
+        Limited to the current FPL event plus any gameweek we already know
+        has a fixture in progress (covers bonus points still settling just
+        after full time, near a gameweek boundary). Replaces sweeping all
+        38 gameweeks every minute regardless of what is actually live.
+        """
+        events_model = self.env['fpl.events']
+        current_event = events_model.search([('is_current', '=', True)], limit=1)
+
+        gameweeks = set()
+        if current_event:
+            gameweeks.add(current_event.event_id)
+
+        in_progress = self.search([('started', '=', True), ('finished_provisional', '=', False)])
+        gameweeks.update(in_progress.mapped('gameweek'))
+
+        return sorted(gw for gw in gameweeks if gw)
+
+    def _notify_kanban_refresh(self, fixtures):
+        """Ping the live-scoreboard kanban so open clients reload instead of
+        waiting on a manual refresh. Payload only carries the changed ids -
+        the client re-fetches through the normal view read.
+        """
+        self.env['bus.bus']._sendone(
+            'fantasy_premier_league.fixtures_live',
+            'fpl.fixtures/update',
+            {'fixture_ids': fixtures.ids},
+        )
 
     def _get_stats_snapshot(self, fixture_id):
         """Get snapshot of stats data for change detection"""

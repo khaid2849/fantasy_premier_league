@@ -13,7 +13,7 @@ class FPLElements(models.Model, FPLApiMixin):
     _name = 'fpl.elements'
     _description = 'FPL Elements'
 
-    def _default_image(self):
+    def _default_element_photo(self):
         return base64.b64encode(file_open('fantasy_premier_league/static/src/img/blank_image.png', 'rb').read())
 
     element_id = fields.Integer(string=_('Element ID'))
@@ -41,7 +41,7 @@ class FPLElements(models.Model, FPLApiMixin):
     news = fields.Char(string=_('News'))
     news_added = fields.Char(string=_('News Added'))    
     now_cost = fields.Float(string=_('Now Cost'))
-    photo = fields.Binary(string=_('Photo'))
+    photo = fields.Binary(string=_('Photo'), default=_default_element_photo)
     points_per_game = fields.Float(string=_('Points Per Game'))
     removed = fields.Boolean(string=_('Removed'))
     second_name = fields.Char(string=_('Second Name'))

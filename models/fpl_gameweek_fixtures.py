@@ -62,7 +62,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h_defensive_contribution_ids = fields.One2many('fpl.team.h.defensive.contribution', 'gw_fixture_id', sting=_('Home Team Defensive Contribution'))
     current_season = fields.Char(string=_('Current Season'), compute='_compute_current_season')
     match_result_display = fields.Html(string=_('Match Result'), compute='_compute_match_result_display')
-    
+ 
     @api.depends()
     def _compute_match_result_display(self):
         user_tz = pytz.timezone(self.env.user.tz or 'UTC')
@@ -78,7 +78,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name} vs {rec.team_a.name}'
-    
+ 
     @api.depends()
     def _compute_current_season(self):
         events_model = self.env['fpl.events']
@@ -91,24 +91,43 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
             rec.current_season = current_event.season
 
     def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True,
-                                         live_poll_interval=2, live_poll_budget=50):
+                                         live_poll_interval=15, live_poll_budget=50):
         """Sync gameweek fixtures from the FPL API.
 
         ``ir.cron`` has no sub-minute interval (the field only accepts
         minutes/hours/days/..., and the cron dispatcher itself only wakes up
-        about once a minute), so genuine 1-2s live polling can't come from
-        the cron interval. Instead, when this runs as the scheduled
-        live-tracking job (no ``manual_gameweek``/``get_all``), it loops
-        internally every ``live_poll_interval`` seconds - committing after
-        each pass so the kanban bus push lands right away - for up to
-        ``live_poll_budget`` seconds. If a match is still live once that
-        budget runs out, it re-queues itself to run again immediately via
-        ``ir.cron``'s own trigger mechanism (see ``_trigger()`` in
-        ``ir_cron.py``) rather than waiting for the next scheduled minute.
-        Once nothing is live, it stops self-triggering and the normal
-        1-minute schedule takes back over as the "is anything live yet"
-        check.
+        about once a minute), so this can't come from the cron interval
+        alone. Instead, when this runs as the scheduled live-tracking job (no
+        ``manual_gameweek``/``get_all``), it loops internally every
+        ``live_poll_interval`` seconds - committing after each pass so the
+        kanban bus push lands right away - for up to ``live_poll_budget``
+        seconds. If a match is still live once that budget runs out, it
+        re-queues itself to run again immediately via ``ir.cron``'s own
+        trigger mechanism (see ``_trigger()`` in ``ir_cron.py``) rather than
+        waiting for the next scheduled minute. Once nothing is live, it stops
+        self-triggering and the normal 1-minute schedule takes back over as
+        the "is anything live yet" check.
+
+        ``live_poll_interval`` defaults to 15s rather than 1-2s: FPL's own
+        backend (fed from Opta) only refreshes its live data internally
+        roughly once every ~60s, so polling faster than that re-fetches and
+        re-processes byte-identical data most of the time for no real
+        freshness gain, while multiplying the DB write load from
+        ``_process_fixture_stats`` for nothing. 15s was picked as a floor
+        that's still meaningfully tighter than the 1-minute baseline without
+        being wasteful against a source that doesn't update that often.
         """
+        # ir.cron acquires this job's row with a row lock (see
+        # `_acquire_one_job` in ir_cron.py) that isn't released until the
+        # transaction commits. Committing immediately, before any real work,
+        # releases it right away instead of holding it for however long the
+        # sync takes - otherwise, while a match is live and this job is
+        # effectively running continuously, any concurrent write to this
+        # exact cron record (e.g. a module upgrade reloading ir_cron.xml)
+        # can hit ir.cron's own `_try_lock()` NOWAIT check and fail outright
+        # with "This cron task is currently being executed".
+        self.env.cr.commit()
+
         if manual_gameweek or get_all:
             gameweeks = [manual_gameweek] if manual_gameweek else range(1, 39)
             self._poll_fixtures_once(gameweeks, get_all, send_live_notifications)
@@ -268,15 +287,25 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
             for team_type in ['a', 'h']:
                 team_key = 'away' if team_type == 'a' else 'home'
                 model_name = stat_model_mapping[identifier][team_key]
-                self.env[model_name].search([('gw_fixture_id', '=', fixture_id)]).unlink()
-                
                 team_stats = stat_group.get(team_type, [])
+
+                # During a live match this runs every few seconds, but the
+                # underlying stat rarely changes between polls - skip the
+                # delete+recreate entirely when the incoming values already
+                # match what's stored, instead of rewriting unconditionally.
+                new_values = {ps.get('element'): ps.get('value') for ps in team_stats}
+                existing = self.env[model_name].search([('gw_fixture_id', '=', fixture_id)])
+                existing_values = {rec.element_id.element_id: rec.value for rec in existing}
+                if new_values == existing_values:
+                    continue
+
+                existing.unlink()
                 for player_stat in team_stats:
                     element_id = player_stat.get('element')
                     value = player_stat.get('value')
-                    
+
                     player_record = self.env['fpl.elements'].search([('element_id', '=', element_id)], limit=1)
-                    
+
                     self.env[model_name].create({
                         'gw_fixture_id': fixture_id,
                         'element_id': player_record.id if player_record else False,

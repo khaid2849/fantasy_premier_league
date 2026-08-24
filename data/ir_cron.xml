@@ -22,7 +22,7 @@
              the cron dispatcher itself only wakes up ~once a minute, so 1
              minute is the floor this field can express - it is NOT the
              real live-tracking cadence. During a live match the job loops
-             internally every ~2s and self-triggers its own immediate
+             internally every ~15s and self-triggers its own immediate
              re-run via ir.cron's trigger mechanism (see
              cron_get_data_gameweek_fixutres's docstring); this interval is
              only the fallback that notices a match has kicked off. -->

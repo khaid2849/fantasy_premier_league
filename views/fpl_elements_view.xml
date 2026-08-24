@@ -53,7 +53,7 @@
                 <templates>
                     <t t-name="card" class="flex-row">
                         <aside class="o_kanban_aside_full">
-                            <field name="photo" widget="background_image" options="{'zoom': true, 'zoom_delay': 1000, 'preview_image':'photo'}" class="d-block position-relative"/>
+                            <field name="photo" widget="image" options="{'size': [150, 250], 'zoom': true, 'zoom_delay': 900, 'preview_image':'photo'}" class="d-block position-relative"/>
                         </aside>
                         <main class="ms-2">
                             <div class="d-flex align-items-center">

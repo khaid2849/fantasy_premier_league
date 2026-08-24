@@ -1,8 +1,10 @@
 import logging
+import base64
 
 from odoo import models, fields, api, _
 from .fpl_api_mixin import FPLApiMixin
 from odoo.exceptions import UserError
+from odoo.tools.misc import file_open
 
 _logger = logging.getLogger(__name__)
 
@@ -10,6 +12,9 @@ _logger = logging.getLogger(__name__)
 class FPLElements(models.Model, FPLApiMixin):
     _name = 'fpl.elements'
     _description = 'FPL Elements'
+
+    def _default_image(self):
+        return base64.b64encode(file_open('fantasy_premier_league/static/src/img/blank_image.png', 'rb').read())
 
     element_id = fields.Integer(string=_('Element ID'))
     fpl_team_id = fields.Many2one('fpl.teams', string=_('FPL Team'))

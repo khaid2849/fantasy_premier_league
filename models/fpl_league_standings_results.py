@@ -25,7 +25,7 @@ class FplLeagueStandingsResults(models.Model):
             if rec.club_badge_src:
                 club_badge_src = rec.club_badge_src
             else:
-                club_badge_src = '/fantasy_premier_league/static/src/img/default_club_badge.png'
+                club_badge_src = '/fantasy_premier_league/static/src/img/blank_image.png'
             rec.name = f'<div class="d-flex align-items-center"><div><img src={club_badge_src} style="width: 30px; height: 30px;"/></div><div><strong>&nbsp;{rec.entry_name}</strong><br/><span>&nbsp;{rec.player_name}</span></div></div>'
 
     @api.depends('last_rank', 'rank')

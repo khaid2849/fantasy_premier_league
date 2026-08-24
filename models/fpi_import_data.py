@@ -284,7 +284,7 @@ class FplImportData(models.Model, FPLApiMixin):
                     pass
             
             region_code = next((region['iso_code_short'] for region in REGIONS if region['id'] == element_data.get('region')), None)
-            photo = self._get_photo_png(code=element_data.get('opta_code'), path='fantasy_premier_league/static/src/img/players_avatar')
+            photo = self._get_photo_png(code=element_data.get('code'), path='fantasy_premier_league/static/src/img/players_avatar')
             vals = {
                 'element_id': element_data.get('id'),
                 'fpl_team_id': team_id,

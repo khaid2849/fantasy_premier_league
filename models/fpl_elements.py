@@ -5,6 +5,7 @@ from odoo import models, fields, api, _
 from .fpl_api_mixin import FPLApiMixin
 from odoo.exceptions import UserError
 from odoo.tools.misc import file_open
+from odoo.modules.module import get_module_resource
 
 _logger = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ class FPLElements(models.Model, FPLApiMixin):
     defensive_contribution_per_90 = fields.Float(string=_('Defensive Contribution Per 90'))
     currency_id = fields.Many2one('res.currency', string=_('Currency'))
     display_name = fields.Char(string=_('Display Name'), compute='_compute_display_name')
+    display_player_with_photo = fields.Html(compute='_compute_display_player_with_photo')
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string=_('History IDs'))
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string=_('History Past IDs'))
     fixutres_ids = fields.One2many('fpl.element.summary.fixture', 'element_id', string=_('Fixutres IDs'))
@@ -156,7 +158,19 @@ class FPLElements(models.Model, FPLApiMixin):
     def _compute_summary_name_form(self):
         for rec in self:
             rec.summary_name_form = f'<b>{rec.web_name}</b> <br/><span style="color: #af99b1; font-size:11px">{rec.fpl_team_id.name} {rec.element_type_id.singular_name_short}</span>'
-           
+    
+    @api.depends('photo', 'display_name', 'opta_code')
+    def _compute_display_player_with_photo(self):
+        for rec in self:
+            avatar_path = get_module_resource(
+                'fantasy_premier_league', 'static', 'src', 'img', 'players_avatar', f'{rec.opta_code}.png'
+            )
+            if avatar_path:
+                element_photo_src = f'/fantasy_premier_league/static/src/img/players_avatar/{rec.opta_code}.png'
+            else:
+                element_photo_src = '/fantasy_premier_league/static/src/img/blank_image.png'
+            rec.display_player_with_photo = f'<div class="d-flex align-items-center"><div><img src={element_photo_src} style="width: 40px; height: 40px;"/></div>&nbsp;<div>{rec.summary_name_form}</div></div>'
+
     def cron_get_data_element_summary(self):
         try:
             elements = self.search([('removed', '=', False)])

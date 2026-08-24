@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fpl_table_standings_view_tree" model="ir.ui.view">
+        <field name="name">fpl.table.standings.tree</field>
+        <field name="model">fpl.table.standings</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" default_order="position asc" string="Table Standings"
+                  js_class="fpl_table_standings_list_view">
+                <field name="position" string="Pos"/>
+                <field name="team_id" widget="fpl_team_badge" string="Team"/>
+                <field name="played" string="PL"/>
+                <field name="won" string="W"/>
+                <field name="drawn" string="D"/>
+                <field name="lost" string="L"/>
+                <field name="goals_for" string="GF"/>
+                <field name="goals_against" string="GA"/>
+                <field name="goal_difference" string="GD"/>
+                <field name="points" string="Pts"/>
+                <field name="form_ids" widget="fpl_standings_form" string="Form">
+                    <list>
+                        <field name="sequence"/>
+                        <field name="result"/>
+                        <field name="fixture_id"/>
+                    </list>
+                </field>
+                <field name="next_fixture_id" widget="fpl_next_opponent" string="Next"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fpl_table_standings_view_action" model="ir.actions.act_window">
+        <field name="name">Table Standings</field>
+        <field name="res_model">fpl.table.standings</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="fantasy_premier_league.fpl_table_standings_view_tree"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No standings data yet!
+            </p>
+            <p>
+                The table is refreshed automatically from the Premier League live standings API every time you open this menu.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="fantasy_premier_league.FplTeamBadgeField">
+        <div class="fpl-standings-team">
+            <img t-if="logoSrc" t-att-src="logoSrc" t-att-alt="teamName" class="fpl-standings-team-logo"/>
+            <span class="fpl-standings-team-name" t-esc="teamName"/>
+        </div>
+    </t>
+
+    <t t-name="fantasy_premier_league.FplStandingsFormField">
+        <div class="fpl-standings-form">
+            <t t-foreach="formResults" t-as="item" t-key="item.id">
+                <span t-attf-class="fpl-standings-form-chip fpl-standings-form-chip-{{item.result}}"
+                      t-att-title="item.result"
+                      t-on-click.stop="() => this.onChipClick(item.fixtureId)"
+                      t-esc="item.result"/>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="fantasy_premier_league.FplNextOpponentField">
+        <div class="fpl-standings-next">
+            <img t-if="logoSrc" t-att-src="logoSrc" t-att-alt="opponentName" t-att-title="opponentName"
+                 class="fpl-standings-next-logo" t-on-click.stop="onLogoClick"/>
+        </div>
+    </t>
+
+</templates>

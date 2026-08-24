@@ -1,0 +1,68 @@
+.fpl-standings-team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .fpl-standings-team-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
+    .fpl-standings-team-name {
+        font-weight: 500;
+    }
+}
+
+.fpl-standings-form {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .fpl-standings-form-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        color: #fff;
+        cursor: pointer;
+        user-select: none;
+
+        &.fpl-standings-form-chip-W {
+            background-color: #2ECC71;
+        }
+
+        &.fpl-standings-form-chip-D {
+            background-color: #95A5A6;
+        }
+
+        &.fpl-standings-form-chip-L {
+            background-color: #E74C3C;
+        }
+
+        &:hover {
+            filter: brightness(0.9);
+        }
+    }
+}
+
+.fpl-standings-next {
+    display: flex;
+    align-items: center;
+
+    .fpl-standings-next-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        cursor: pointer;
+
+        &:hover {
+            transform: scale(1.1);
+        }
+    }
+}

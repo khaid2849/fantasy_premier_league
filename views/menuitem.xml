@@ -15,8 +15,9 @@
 
     <menuitem id="menu_fpl_element_stats" name="Stats" parent="menu_fpl_root" sequence="10" action="fantasy_premier_league.fpl_elements_summary_view_action"/>
 
-    <menuitem id="menu_fpl_table" name="Table" parent="menu_fpl_root" sequence="15" action="fantasy_premier_league.fpl_table_view_action"/>
-    
+    <!-- <menuitem id="menu_fpl_table" name="Table" parent="menu_fpl_root" sequence="15" action="fantasy_premier_league.fpl_table_view_action"/> -->
+    <menuitem id="menu_fpl_table_standings" name="Table Standings" parent="menu_fpl_root" sequence="15" action="fantasy_premier_league.fpl_table_standings_view_action"/>
+
     <menuitem id="menu_fpl_current_gameweek_fixtures" name="Fixtures" parent="menu_fpl_root" action="fantasy_premier_league.fpl_gameweek_current_fixtures_view_action" sequence="20"/>
 
     <menuitem id="menu_fpl_histroy_fixtures" name="Matches" parent="menu_fpl_root" action="fantasy_premier_league.fpl_histroy_fixtures_action" sequence="25"/>

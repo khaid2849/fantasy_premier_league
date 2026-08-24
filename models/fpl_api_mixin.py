@@ -1,5 +1,6 @@
 from odoo import models, api
 from ..services.fpl_api_client import FPLApiClient, FPLDataService, FPLApiException
+from ..services.fpl_pulse_api_client import FPLPulseLiveApiClient, FPLPulseLiveApiException
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -60,7 +61,41 @@ class FPLApiMixin(models.AbstractModel):
         except AttributeError:
             _logger.error(f"Unknown API method: {endpoint_method}")
             raise ValueError(f"Unknown API method: {endpoint_method}")
-    
+
+    @api.model
+    def get_pulse_live_client(self):
+        """
+        Get a configured Pulse Live API client (Premier League standings/team-form)
+
+        Returns:
+            FPLPulseLiveApiClient: Configured API client instance
+        """
+        return FPLPulseLiveApiClient()
+
+    @api.model
+    def sync_from_pulse_live_api(self, endpoint_method, *args, **kwargs):
+        """
+        Generic method to sync data from the Pulse Live API
+
+        Args:
+            endpoint_method (str): Name of the FPLPulseLiveApiClient method to call
+            *args: Positional arguments for the method
+            **kwargs: Keyword arguments for the method
+
+        Returns:
+            dict: API response data
+        """
+        try:
+            api_client = self.get_pulse_live_client()
+            method = getattr(api_client, endpoint_method)
+            return method(*args, **kwargs)
+        except FPLPulseLiveApiException as e:
+            _logger.error(f"Pulse Live API sync failed for {endpoint_method}: {str(e)}")
+            raise
+        except AttributeError:
+            _logger.error(f"Unknown Pulse Live API method: {endpoint_method}")
+            raise ValueError(f"Unknown Pulse Live API method: {endpoint_method}")
+
     def sync_authenticated_data(self, endpoint_method, cookies, x_api_authorization, *args, **kwargs):
         """
         Sync data from authenticated FPL API endpoints

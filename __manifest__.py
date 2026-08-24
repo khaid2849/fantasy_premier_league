@@ -21,6 +21,7 @@
 
         'views/fpl_manager_team_view.xml',
         'views/fpl_teams_view.xml',
+        'views/fpl_table_standings_view.xml',
         'views/fpl_elements_view.xml',
         'views/fpl_gameweek_fixtures_view.xml',
         'views/fpl_leagues_view.xml',

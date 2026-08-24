@@ -22,3 +22,4 @@ from . import fpl_gameweek_pick_lines
 from . import fpl_element_stats
 from . import master_data
 from . import fpl_element_summary_history
+from . import fpl_table_standings

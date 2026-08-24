@@ -35,7 +35,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h_score = fields.Integer(string=_('Home Team Score'))
     team_a_difficulty = fields.Integer(string=_('Away Team Difficulty'))
     team_h_difficulty = fields.Integer(string=_('Home Team Difficulty'))
-    pulse_id = fields.Integer(string=_('Pulse id'))
+    pulse_id = fields.Integer(string=_('Pulse id'), index=True)
 
     team_a_goals_scored_ids = fields.One2many('fpl.team.a.goals.scored', 'gw_fixture_id', sting=_('Away Team Goals Scored'))
     team_a_assists_ids = fields.One2many('fpl.team.a.assists', 'gw_fixture_id', sting=_('Away Team Assists'))

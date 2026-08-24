@@ -8,7 +8,7 @@ class FPLTeams(models.Model):
     _description = 'FPL Teams'
 
     name = fields.Char(string=_('Name'))
-    code = fields.Char(string=_('Code'))
+    code = fields.Char(string=_('Code'), index=True)
     form = fields.Char(string=_('Form'))
     team_id = fields.Integer(string=_('Team ID'))
     loss = fields.Integer(string=_('Loss'))

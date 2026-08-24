@@ -386,7 +386,7 @@ class FplImportData(models.Model, FPLApiMixin):
                 'starts_per_90': element_data.get('starts_per_90'),
                 'clean_sheets_per_90': element_data.get('clean_sheets_per_90'),
                 'defensive_contribution_per_90': element_data.get('defensive_contribution_per_90'),
-                'photo': photo,
+                'photo': photo if photo else elements_model._default_element_photo(),
             }
             if existing_element:
                 existing_element.write(vals)

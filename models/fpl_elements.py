@@ -159,14 +159,14 @@ class FPLElements(models.Model, FPLApiMixin):
         for rec in self:
             rec.summary_name_form = f'<b>{rec.web_name}</b> <br/><span style="color: #af99b1; font-size:11px">{rec.fpl_team_id.name} {rec.element_type_id.singular_name_short}</span>'
     
-    @api.depends('photo', 'display_name', 'opta_code')
+    @api.depends('photo', 'display_name', 'code')
     def _compute_display_player_with_photo(self):
         for rec in self:
             avatar_path = get_module_resource(
-                'fantasy_premier_league', 'static', 'src', 'img', 'players_avatar', f'{rec.opta_code}.png'
+                'fantasy_premier_league', 'static', 'src', 'img', 'players_avatar', f'{rec.code}.png'
             )
             if avatar_path:
-                element_photo_src = f'/fantasy_premier_league/static/src/img/players_avatar/{rec.opta_code}.png'
+                element_photo_src = f'/fantasy_premier_league/static/src/img/players_avatar/{rec.code}.png'
             else:
                 element_photo_src = '/fantasy_premier_league/static/src/img/blank_image.png'
             rec.display_player_with_photo = f'<div class="d-flex align-items-center"><div><img src={element_photo_src} style="width: 40px; height: 40px;"/></div>&nbsp;<div>{rec.summary_name_form}</div></div>'

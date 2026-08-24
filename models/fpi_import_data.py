@@ -396,7 +396,7 @@ class FplImportData(models.Model, FPLApiMixin):
 
     
     def download_player_avatar(self):
-        player_codes = self.env['fpl.elements'].search([('opta_code', '!=', False)])
+        player_codes = self.env['fpl.elements'].search([('opta_code', '!=', False), ('code', '!=', False)])
         
         # Ensure the players_avatar directory exists
         base_path = file_path('fantasy_premier_league/static/src/img/players_avatar')
@@ -405,21 +405,21 @@ class FplImportData(models.Model, FPLApiMixin):
             _logger.info(f"Created directory: {base_path}")
         
         for player in player_codes:
-            code = player.opta_code.replace('p', '')
+            code = player.code
             url_image = f'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
             
-            save_in_path = os.path.join(base_path, f'{player.opta_code}.png')
+            save_in_path = os.path.join(base_path, f'{player.code}.png')
 
             try:
                 download_image = requests.get(url_image, timeout=10)
                 if download_image.status_code == 200:
                     with open(save_in_path, 'wb') as file:
                         file.write(download_image.content)
-                    _logger.info(f"Downloaded avatar for player {player.opta_code}")
+                    _logger.info(f"Downloaded avatar for player {player.code}")
                 else:
-                    _logger.warning(f"Failed to download avatar for player {player.opta_code} - Status code: {download_image.status_code}")
+                    _logger.warning(f"Failed to download avatar for player {player.code} - Status code: {download_image.status_code}")
             except Exception as e:
-                _logger.error(f"Error downloading avatar for player {player.opta_code}: {str(e)}")
+                _logger.error(f"Error downloading avatar for player {player.code}: {str(e)}")
 
     def _normalize_logo_png(self, png_bytes, size=100):
         """Resize PNG to a fixed square canvas, preserving aspect ratio with transparent padding."""

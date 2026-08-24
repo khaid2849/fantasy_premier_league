@@ -99,8 +99,7 @@
                                 <div class="col-6">
                                     <small class="text-muted">Selected</small>
                                     <div>
-                                        <field name="selected_by_percent"/>
-%
+                                        <field name="selected_by_percent"/>%
                                     </div>
                                 </div>
                             </div>
@@ -417,8 +416,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="goals_scored desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
-                <field name="web_name" string="Player"/>
+                <field name="display_player_with_photo" string="Player"/>
+                <field name="web_name" string="Player" optional="hide"/>
                 <field name="first_name" optional="hide"/>
                 <field name="second_name" optional="hide"/>
                 <field name="element_type_id" string="Position"/>
@@ -445,8 +444,8 @@
         <field name="model">fpl.elements</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="assists desc">
-                <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
-                <field name="web_name" string="Player"/>
+                <field name="display_player_with_photo" string="Player"/>
+                <field name="web_name" string="Player" optional="hide"/>
                 <field name="first_name" optional="hide"/>
                 <field name="second_name" optional="hide"/>
                 <field name="element_type_id" string="Position"/>
@@ -476,8 +475,7 @@
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0" default_order="total_points desc">
                 <field name="display_player_with_photo" string="Player"/>
-                <!-- <field name="photo" widget="image" options="{'size': [40, 40]}" class="oe_avatar" string=""/>
-                <field name="summary_name_form" string="Player"/> -->
+                <field name="summary_name_form" string="Player" optional="hide"/>
                 <field name="now_cost" string="Cost"/>
                 <field name="selected_by_percent" string="Sel.%"/>
                 <field name="form" string="Form"/>

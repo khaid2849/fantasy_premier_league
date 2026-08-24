@@ -16,6 +16,7 @@ class FplLeagueStandingsResults(models.Model):
     has_played = fields.Boolean(string=_('Has played'))
     phase_id = fields.Many2one('fpl.phases', string=_('Phase'))
     rank_form = fields.Html(string=_('Rank'), compute='_compute_rank_form')
+    club_badge_src = fields.Char(string=_('Club Badge Src'))
     name = fields.Html(string=_('Team & Manager'), compute='_compute_team_and_manager')
 
     @api.depends('entry_name', 'player_name')

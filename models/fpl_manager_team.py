@@ -626,7 +626,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                     current_result_ids = set()
                     
                     for rs in results:
-                        result_id = rs.get('id')
+                        result_id = rs.get('entry')
                         current_result_ids.add(result_id)
                         
                         standing_vals = rs.copy()
@@ -635,7 +635,6 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                             'league_id': leauge.id,
                             'phase_id': phase.phase_id.id,
                         })
-                        standing_vals.pop('id')
                         
                         existing_standing = existing_standings.get(result_id)
                         if existing_standing:

@@ -3,7 +3,7 @@
 
     <t t-name="fantasy_premier_league.FplTeamBadgeField">
         <div class="fpl-standings-team">
-            <img t-if="logoSrc" t-att-src="logoSrc" t-att-alt="teamName" class="fpl-standings-team-logo"/>
+            <img t-if="logoSrc" t-att-src="logoSrc" t-att-alt="teamName" class="fpl-standings-team-logo" t-on-click.stop="onBadgeClick"/>
             <span class="fpl-standings-team-name" t-esc="teamName"/>
         </div>
     </t>

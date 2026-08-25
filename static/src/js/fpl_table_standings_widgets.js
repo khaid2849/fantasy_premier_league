@@ -23,12 +23,36 @@ function openFixtureWizard(actionService, fixtureId) {
     });
 }
 
+function openTeamWizard(actionService, teamId) {
+    if (!teamId) {
+        return;
+    }
+    actionService.doAction({
+        type: "ir.actions.act_window",
+        res_model: "fpl.teams",
+        res_id: teamId,
+        name: "Team",
+        view_mode: "form",
+        view_type: "form",
+        views: [[false, "form"]],
+        target: "new",
+    });
+}
+
 /**
  * Renders the crest + name of the team for a standings row (m2o field).
  */
 export class FplTeamBadgeField extends Component {
     static template = "fantasy_premier_league.FplTeamBadgeField";
     static props = { ...standardFieldProps };
+
+    setup() {
+        this.action = useService("action");
+    }
+
+    get teamId() {
+        return this.props.record.data.team_id[0];
+    }
 
     get teamName() {
         return this.props.record.data[this.props.name]?.display_name || "";
@@ -40,6 +64,10 @@ export class FplTeamBadgeField extends Component {
 
     get logoSrc() {
         return this.teamCode ? `${TEAM_LOGO_PATH}/${this.teamCode}.svg` : "";
+    }
+
+    onBadgeClick() {
+        openTeamWizard(this.action, this.teamId);
     }
 }
 

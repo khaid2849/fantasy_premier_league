@@ -29,7 +29,7 @@
     </record>
 
     <record id="fpl_table_standings_view_action" model="ir.actions.act_window">
-        <field name="name">Table Standings</field>
+        <field name="name">League Standings</field>
         <field name="res_model">fpl.table.standings</field>
         <field name="view_mode">list</field>
         <field name="view_id" ref="fantasy_premier_league.fpl_table_standings_view_tree"/>

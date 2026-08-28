@@ -55,7 +55,7 @@ export class FplTeamBadgeField extends Component {
     }
 
     get teamName() {
-        return this.props.record.data[this.props.name]?.display_name || "";
+        return this.props.record.data.team_id[1];
     }
 
     get teamCode() {

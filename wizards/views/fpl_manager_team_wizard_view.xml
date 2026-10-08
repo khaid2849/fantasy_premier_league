@@ -7,9 +7,8 @@
             <form string="FPL Manager Team Wizard">
                 <sheet>
                     <group>
-                        <field name="manager_id" required="1" readonly="context.get('is_readonly')"/>
-                        <field name="cookies" required="1"/>
-                        <field name="x_api_authorization" required="1" password="True"/>
+                        <field name="manager_id" readonly="context.get('is_readonly')"/>
+                        <field name="refresh_token" password="True"/>
                     </group>
 
                     <group/>
@@ -22,11 +21,12 @@
                             You'll see a URL similar to this: https://fantasy.premierleague.com/entry/1234567/event/1.<br/>
                             The number after /entry/ and before /event/ (in this case, 1234567) is your FPL ID, according to several FPL resources.<br/><br/>
 
-                            <strong>How to get your Cookies and X-api-authorization ?</strong><br/>
-                            1. Open the developer tools (Ctrl+Shift+I or F12)<br/>
-                            2. Go to the Network tab<br/>
-                            3. Find the request to https://fantasy.premierleague.com/api/me/<br/>
-                            4. Copy the Cookies and X-api-authorization value from the request headers
+                            <strong>How to get your FPL Refresh Token (only needed once)?</strong><br/>
+                            <em>Note: Without a token, only public data (summary, history, leagues) is synced.</em><br/>
+                            1. Log in to <a href="https://fantasy.premierleague.com/" target="_blank">https://fantasy.premierleague.com/</a> and open the developer tools (Ctrl+Shift+I or F12)<br/>
+                            2. Go to the Console tab and run (type "allow pasting" first if Chrome blocks it):<br/>
+                            <code>copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=&gt;k.startsWith('oidc.user:')))).refresh_token)</code><br/>
+                            3. Paste the copied value in the field above. Odoo refreshes the token automatically afterwards.
                         </p>
                     </group>
                 </sheet>

@@ -67,6 +67,37 @@ class FPLApiClient:
             _logger.error(f"Unexpected error for {endpoint_key}: {str(e)}")
             raise FPLApiException(_("Unexpected API error: %s") % str(e))
 
+    @staticmethod
+    def refresh_access_token(refresh_token, client_id=None):
+        """
+        Exchange an OIDC refresh token for a new access token
+
+        Args:
+            refresh_token (str): OIDC refresh token (from localStorage 'oidc.user:*')
+            client_id (str): OIDC client id, defaults to FPLApiConfig.OIDC_CLIENT_ID
+
+        Returns:
+            dict: Token response with 'access_token', 'expires_in' and the rotated 'refresh_token'
+        """
+        try:
+            response = requests.post(FPLApiConfig.OIDC_TOKEN_URL, data={
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token,
+                'client_id': client_id or FPLApiConfig.OIDC_CLIENT_ID,
+            }, timeout=30)
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"FPL token refresh request failed: {str(e)}")
+            raise FPLApiException(_("Token refresh request failed: %s") % str(e))
+
+        if response.status_code != 200:
+            _logger.error(f"FPL token refresh rejected ({response.status_code}): {response.text[:200]}")
+            raise FPLApiException(_("FPL refresh token is invalid, expired or revoked (HTTP %s)") % response.status_code)
+
+        data = response.json()
+        if not data.get('access_token'):
+            raise FPLApiException(_("No access token in FPL token response"))
+        return data
+
     # Public API Methods (no authentication required)
     
     def get_bootstrap_static(self):

@@ -16,7 +16,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
 
     gameweek = fields.Integer(string=_('Gameweek'))
     code = fields.Char(string=_('Code'))
-    event_id = fields.Many2one('fpl.events', string=_('Gameweek'), index=True)
+    event_id = fields.Many2one('fpl.events', string=_('Gameweek'), index=True, group_expand='_read_group_event_ids', readonly=True)
     season = fields.Char(string=_('Season'), related='event_id.season', store=True, index=True)
     finished = fields.Boolean(string=_('Finished'))
     finished_provisional = fields.Boolean(string=_('Finished provisional'))
@@ -62,7 +62,7 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h_defensive_contribution_ids = fields.One2many('fpl.team.h.defensive.contribution', 'gw_fixture_id', sting=_('Home Team Defensive Contribution'))
     current_season = fields.Char(string=_('Current Season'), compute='_compute_current_season')
     match_result_display = fields.Html(string=_('Match Result'), compute='_compute_match_result_display')
- 
+
     @api.depends()
     def _compute_match_result_display(self):
         user_tz = pytz.timezone(self.env.user.tz or 'UTC')
@@ -89,6 +89,12 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
             current_event = events_model.search([], order='deadline_time desc', limit=1)
         for rec in self:
             rec.current_season = current_event.season
+
+    @api.model
+    def _read_group_event_ids(self, events, domain):
+        # Only the groups that have fixtures; needed so read_group returns the
+        # fpl.events 'fold' flag (__fold) to the kanban view
+        return events.sorted(lambda e: (e.season or '', e.event_id))
 
     def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True,
                                          live_poll_interval=15, live_poll_budget=50):

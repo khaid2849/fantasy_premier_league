@@ -1,10 +1,10 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .master_data import REGIONS
 from .fpl_api_mixin import FPLApiMixin
-from ..services.fpl_api_client import FPLApiException
+from ..services.fpl_api_client import FPLApiClient, FPLApiException
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -16,8 +16,11 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     _description = 'FPL Manager Team'
     
     manager_id = fields.Integer(string=_('Manager ID'))
-    cookies = fields.Char(string=_('Cookies'))
-    x_api_authorization = fields.Char(string=_('X-api-authorization'))
+    # FPL OIDC tokens: the refresh token rotates on every exchange, see _get_fpl_access_token
+    refresh_token = fields.Char(string=_('FPL Refresh Token'), groups='base.group_system', copy=False)
+    access_token = fields.Char(string=_('FPL Access Token'), groups='base.group_system', copy=False)
+    access_token_expiry = fields.Datetime(string=_('Access Token Expiry'), groups='base.group_system', copy=False)
+    has_fpl_token = fields.Boolean(string=_('FPL Token Connected'), compute='_compute_has_fpl_token')
     #Manager Data
     manager_data_id = fields.Integer(string=_('Manager Data ID'))
     date_of_birth = fields.Date(string=_('Date of Birth'), tracking=True)
@@ -70,7 +73,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     made = fields.Float(string=_('Transfers Made'), tracking=True)
     bank = fields.Float(string=_('In the Bank'), tracking=True)
     value = fields.Float(string=_('Squad Value'), tracking=True)
-    status_for_entry = fields.Selection([('available', _('Available')), ('used', _('Used'))], string=_('Status for Entry'))
+    status_for_entry = fields.Selection([('available', _('Available')), ('played', _('Played')), ('used', _('Used')), ('unavailable', _('Unavailable'))], string=_('Status for Entry'))
     
     used_bench_boost = fields.Boolean(compute='_computed_used_chips')
     used_wildcard = fields.Boolean(compute='_computed_used_chips')
@@ -80,6 +83,10 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     #Entry History
     entry_history_ids = fields.One2many('fpl.entry.history', 'manager_id', string=_('Entry History'))
     entry_past_ids = fields.One2many('fpl.past', 'manager_id', string=_('Entry Past'))
+
+    def _compute_has_fpl_token(self):
+        for rec in self:
+            rec.has_fpl_token = bool(rec.sudo().refresh_token)
 
     @api.depends('manager_chip_ids')
     def _computed_used_chips(self):
@@ -103,31 +110,93 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         return action
 
     def action_verify_manager_data(self):
+        """Open the wizard to (re)connect the FPL token of this manager"""
         self.ensure_one()
         action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_manager_team_wizard_action')
         action.update({
                 'context': {
                     'default_manager_id':  self.manager_id, 
-                    'default_cookies':  self.cookies, 
-                    'default_x_api_authorization':  self.x_api_authorization,
                     'is_readonly': True,    
                 },
         })
         return action
-    
+
+    def action_sync_manager_data(self):
+        """Sync this manager with the stored FPL token, without asking for credentials"""
+        self.ensure_one()
+        self.sync_manager_data(manager_id=self.manager_id)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Success'),
+                'message': _('Manager data has been synced from FPL API'),
+                'type': 'success',
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            },
+        }
+
     @api.model
-    def sync_manager_data(self, cookies, x_api_authorization, manager_id=None):
-        """Sync manager data from FPL API using authentication and create/update record"""
+    def _fpl_exchange_refresh_token(self, refresh_token):
+        client_id = self.env['ir.config_parameter'].sudo().get_param('fantasy_premier_league.oidc_client_id')
         try:
-            manager_data = self.with_context().sync_authenticated_data(
-                'get_manager_data', 
-                cookies, 
-                x_api_authorization
-            )
-            
-            if not manager_data:
-                raise UserError(_("No manager data received from API"))
-            
+            return FPLApiClient.refresh_access_token(refresh_token, client_id=client_id)
+        except FPLApiException as e:
+            raise UserError(_("%s\nPlease click 'Update FPL Token' and paste a new refresh token.") % str(e))
+
+    def _store_fpl_tokens(self, token_data):
+        self.ensure_one()
+        self.sudo().write({
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token') or self.sudo().refresh_token,
+            'access_token_expiry': fields.Datetime.now() + timedelta(seconds=token_data.get('expires_in') or 3600),
+        })
+        # The old refresh token is already revoked by FPL: commit now so that
+        # a later sync error cannot roll back the rotated one.
+        self.env.cr.commit()
+
+    def _get_fpl_access_token(self):
+        """Return a valid access token, refreshing it with the stored refresh token when needed"""
+        self.ensure_one()
+        manager = self.sudo()
+        if manager.access_token and manager.access_token_expiry \
+                and manager.access_token_expiry > fields.Datetime.now() + timedelta(minutes=2):
+            return manager.access_token
+        if not manager.refresh_token:
+            raise UserError(_("No FPL token for manager %s. Please click 'Update FPL Token'.") % self.manager_id)
+        token_data = self._fpl_exchange_refresh_token(manager.refresh_token)
+        self._store_fpl_tokens(token_data)
+        return token_data['access_token']
+
+    @api.model
+    def sync_manager_data(self, refresh_token=None, manager_id=None, public_only=False):
+        """
+        Sync manager data from FPL API and create/update the record.
+
+        Public endpoints (entry summary, history, leagues) only need the manager id.
+        Private endpoints (/me/, /my-team/) use a newly pasted refresh token, or the
+        token stored on the record; they are skipped when no token is available.
+        """
+        try:
+            manager_team = self.browse()
+            if manager_id:
+                manager_team = self.search([('manager_id', '=', int(manager_id))], limit=1)
+
+            token_data = False
+            access_token = False
+            if refresh_token:
+                token_data = self._fpl_exchange_refresh_token(refresh_token.strip())
+                access_token = token_data['access_token']
+            elif manager_team and not public_only and manager_team.has_fpl_token:
+                access_token = manager_team._get_fpl_access_token()
+
+            x_api_authorization = f'Bearer {access_token}' if access_token else None
+            manager_data = {}
+            if access_token:
+                manager_data = self.sync_authenticated_data('get_manager_data', None, x_api_authorization)
+                if not manager_data:
+                    raise UserError(_("No manager data received from API"))
+
             api_manager_id = None
             if 'player' in manager_data and isinstance(manager_data['player'], dict):
                 api_manager_id = str(manager_data['player'].get('entry'))
@@ -141,39 +210,32 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             
             manager_team = self.search([('manager_id', '=', api_manager_id)], limit=1)
             if not manager_team:
-                manager_team = self.create({
-                    'manager_id': api_manager_id,
-                    'cookies': cookies,
-                    'x_api_authorization': x_api_authorization,
-                    }
-                )
+                manager_team = self.create({'manager_id': api_manager_id})
                 _logger.info(f"Created new manager team record for ID: {api_manager_id}")
             else:
-                manager_team.write({
-                    'cookies': cookies,
-                    'x_api_authorization': x_api_authorization,
-                })
                 _logger.info(f"Found existing manager team record for ID: {api_manager_id}")
+            if token_data:
+                manager_team._store_fpl_tokens(token_data)
             
             entry_summary = manager_team.sync_from_fpl_api(
                 'get_entry_summary', 
                 api_manager_id,
             )
-
-            manager_team_data = manager_team.sync_authenticated_data(
-                'get_manager_team',
-                cookies, 
-                x_api_authorization,
-                api_manager_id
-            )
-            
             entry_history_data = manager_team.sync_from_fpl_api(
                 'get_entry_history',
                 api_manager_id,
             )
-            manager_team._update_from_manager_data(manager_data.get('player', {}))
+            if access_token:
+                manager_team_data = manager_team.sync_authenticated_data(
+                    'get_manager_team',
+                    None,
+                    x_api_authorization,
+                    api_manager_id
+                )
+                manager_team._update_from_manager_data(manager_data.get('player', {}))
             manager_team._update_from_entry_summary(entry_summary, manager_team.id)
-            manager_team._update_from_manager_team(manager_team_data, manager_team.id)
+            if access_token:
+                manager_team._update_from_manager_team(manager_team_data, manager_team.id)
             manager_team._update_from_entry_histroy(entry_history_data, manager_team.id)
             
             leauge_ids = self.env['fpl.leagues'].search([('manager_id', '=', manager_team.id)])
@@ -183,15 +245,38 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                     self._update_league_standings(league_phase_mapping)
 
 
-            _logger.info(f"Successfully synced data for manager {api_manager_id}")
+            _logger.info(f"Successfully synced data for manager {api_manager_id} (private data: {bool(access_token)})")
             return manager_team
                 
+        except UserError:
+            raise
         except FPLApiException as e:
             _logger.error(f"Failed to sync manager data: {str(e)}")
             raise UserError(f"Failed to sync manager data: {str(e)}")
         except Exception as e:
             _logger.error(f"Unexpected error during sync: {str(e)}")
             raise UserError(f"Unexpected error during sync: {str(e)}")
+
+    @api.model
+    def cron_sync_manager_data(self):
+        """Sync all managers: public data always, private data when the stored token still works"""
+        for manager in self.search([]):
+            public_only = False
+            if manager.has_fpl_token:
+                try:
+                    # Refresh (and commit the rotated token) outside the savepoint below
+                    manager._get_fpl_access_token()
+                except UserError as e:
+                    public_only = True
+                    _logger.warning(f"FPL token refresh failed for manager {manager.manager_id}: {str(e)}")
+                    manager.message_post(body=_("FPL token expired or revoked, only public data was synced. "
+                                                "Please click 'Update FPL Token' and paste a new refresh token."))
+            try:
+                with self.env.cr.savepoint():
+                    self.sync_manager_data(manager_id=manager.manager_id, public_only=public_only)
+                self.env.cr.commit()
+            except Exception as e:
+                _logger.error(f"Cron sync failed for manager {manager.manager_id}: {str(e)}")
 
     def _update_from_entry_histroy(self, data, manager_id):
         existing_history = {h.event_id.event_id: h for h in self.env['fpl.entry.history'].search([('manager_id', '=', manager_id)])}
@@ -429,9 +514,14 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
             if not chip_record:
                 continue
                 
+            status_for_entry = chip.get('status_for_entry')
+            if status_for_entry not in dict(self.env['fpl.manager.chips']._fields['status_for_entry'].selection):
+                _logger.warning(f"Unknown chip status_for_entry from FPL API: {status_for_entry}")
+                status_for_entry = False
+
             chip_vals = {
                 'chip_id': chip_record.id,
-                'status_for_entry': chip.get('status_for_entry'),
+                'status_for_entry': status_for_entry,
                 'played_by_entry': chip.get('played_by_entry'),
                 'is_pending': chip.get('is_pending'),
                 'manager_id': manager_id,

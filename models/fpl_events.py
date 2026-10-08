@@ -12,6 +12,8 @@ class FPLEvents(models.Model):
     average_entry_score = fields.Float(string=_('Average Entry Score'))
     finished = fields.Boolean(string=_('Finished'))
     data_checked = fields.Boolean(string=_('Data Checked'))
+    # Kanban folding (_fold_name): only the nearest unfinished gameweek is unfolded
+    fold = fields.Boolean(string=_('Folded in Kanban'), compute='_compute_fold')
     highest_scoring_entry = fields.Integer(string=_('Highest Scoring Entry'))
     deadline_time_epoch = fields.Integer(string=_('Deadline Time Epoch'))
     deadline_time_game_offset = fields.Integer(string=_('Deadline Time Game Offset'))
@@ -56,3 +58,12 @@ class FPLEvents(models.Model):
         if date_value.month >= 7:
             return f"{year}/{year + 1}"
         return f"{year - 1}/{year}"
+
+    def _compute_fold(self):
+        open_events = self.browse()
+        for season in set(self.mapped('season')):
+            # Nearest unfinished gameweek (live or next); the last one once the season is over
+            open_events |= self.search([('season', '=', season), ('finished', '=', False)], order='event_id', limit=1) \
+                or self.search([('season', '=', season)], order='event_id desc', limit=1)
+        for rec in self:
+            rec.fold = rec not in open_events

@@ -4,7 +4,7 @@ class FPLManagerChips(models.Model):
     _name = 'fpl.manager.chips'
     _description = 'FPL Manager Chips'
 
-    status_for_entry = fields.Selection([('available', _('Available')), ('used', _('Used'))], string=_('Status for Entry'))
+    status_for_entry = fields.Selection([('available', _('Available')), ('played', _('Played')), ('used', _('Used')), ('unavailable', _('Unavailable'))], string=_('Status for Entry'))
     played_by_entry = fields.Char(string=_('Played by Entry'))
     chip_id = fields.Many2one('fpl.chips', string=_('Chip'))
     number = fields.Integer(string=_('Number'), related='chip_id.number')

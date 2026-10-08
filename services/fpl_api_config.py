@@ -6,6 +6,10 @@ class FPLApiConfig:
     """Configuration class for FPL API endpoints and settings"""
     
     BASE_URL = "https://fantasy.premierleague.com/api"
+
+    # OIDC (PingOne) login used by fantasy.premierleague.com
+    OIDC_TOKEN_URL = "https://account.premierleague.com/as/token"
+    OIDC_CLIENT_ID = "bfcbaf69-aade-4c1b-8f00-c1cb8a193030"
     
     ENDPOINTS = {
         # Public endpoints (no authentication required)

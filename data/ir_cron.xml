@@ -68,4 +68,15 @@
         <field name="code">model.download_team_shirts()</field>
         <field name="active">False</field>
     </record>
+
+    <record id="ir_cron_sync_manager_data" model="ir.cron">
+        <field name="name">Cron Sync FPL Manager Data</field>
+        <field name="model_id" ref="fantasy_premier_league.model_fpl_manager_team"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_manager_data()</field>
+        <field name="interval_number">6</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

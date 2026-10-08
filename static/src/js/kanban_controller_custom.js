@@ -2,7 +2,8 @@
 import { KanbanController } from "@web/views/kanban/kanban_controller";
 import { registry } from "@web/core/registry";
 import { kanbanView } from "@web/views/kanban/kanban_view";
-import { onWillDestroy } from "@odoo/owl";
+import { KanbanRenderer } from "@web/views/kanban/kanban_renderer";
+import { onMounted, onWillDestroy } from "@odoo/owl";
 
 const FIXTURES_LIVE_CHANNEL = "fantasy_premier_league.fixtures_live";
 const FIXTURES_LIVE_NOTIFICATION = "fpl.fixtures/update";
@@ -26,9 +27,22 @@ class FplkanbanViewCustomControllerHideSearch extends KanbanController {
   }
 }
 
+class FplKanbanRendererScrollToOpenGroup extends KanbanRenderer {
+  setup() {
+    super.setup();
+    // Bring the unfolded gameweek (nearest upcoming one) into view on open,
+    // instead of making the user scroll right to find e.g. GW38.
+    onMounted(() => {
+      const openGroup = this.rootRef.el?.querySelector(".o_kanban_group:not(.o_column_folded)");
+      openGroup?.scrollIntoView({ inline: "start", block: "nearest" });
+    });
+  }
+}
+
 const FplkanbanViewCustomHideSearch = {
   ...kanbanView,
   Controller: FplkanbanViewCustomControllerHideSearch,
+  Renderer: FplKanbanRendererScrollToOpenGroup,
 };
 
 registry

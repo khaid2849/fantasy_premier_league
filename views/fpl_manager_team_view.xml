@@ -22,7 +22,8 @@
         <field name="arch" type="xml">
             <form string="Manager Team" delete="0" create="0" edit="0">
                 <header>
-                    <button string="Verify Manager Data" class="btn-primary" type="object" name="action_verify_manager_data"/>
+                    <button string="Sync Manager Data" class="btn-primary" type="object" name="action_sync_manager_data"/>
+                    <button string="Update FPL Token" class="btn-secondary" type="object" name="action_verify_manager_data"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -118,6 +119,7 @@
                             <field name="email"/>
                             <field name="date_of_birth"/>
                             <field name="gender"/>
+                            <field name="has_fpl_token"/>
                         </group>
                         <group>
                             <field name="joined_time"/>
@@ -179,7 +181,8 @@
                                     <field name="chip_type" optional="hide"/>
                                     <field name="status_for_entry" widget="badge"
                                         decoration-success="status_for_entry == 'available'"
-                                        decoration-danger="status_for_entry == 'used'"/>
+                                        decoration-danger="status_for_entry in ('played', 'used')"
+                                        decoration-muted="status_for_entry == 'unavailable'"/>
                                 </list>
                             </field>
                         </page>

@@ -255,7 +255,7 @@
         <field name="name">fpl.gameweek.fixtures.kanban</field>
         <field name="model">fpl.gameweek.fixtures</field>
         <field name="arch" type="xml">
-            <kanban class="o_kanban_dashboard" default_group_by="season,gameweek" create="0" delete="0" edit="0" js_class="fpl_kanban_view_custom_hide_search">
+            <kanban class="o_kanban_dashboard" default_group_by="event_id" create="0" delete="0" edit="0" js_class="fpl_kanban_view_custom_hide_search">
                 <field name="season"/>
                 <field name="gameweek"/>
                 <field name="team_h"/>
@@ -414,6 +414,7 @@
                 <group expand="0" string="Group By">
                     <filter string="Season" name="group_by_season" domain="[]" context="{'group_by': 'season'}"/>
                     <filter string="Gameweek" name="group_by_gameweek" domain="[]" context="{'group_by': 'gameweek'}"/>
+                    <filter string="Gameweek (Fold Finished)" name="group_by_event" domain="[]" context="{'group_by': 'event_id'}"/>
                     <filter string="Date" name="group_by_date" domain="[]" context="{'group_by': 'kickoff_time:day'}"/>
                     <filter string="Status" name="group_by_status" domain="[]" context="{'group_by': 'finished_provisional'}"/>
                 </group>
@@ -454,7 +455,7 @@
         <field name="res_model">fpl.gameweek.fixtures</field>
         <field name="view_mode">kanban,calendar,form</field>
         <field name="domain">[('current_season', '=', 'event_id.season')]</field>
-        <field name="context">{'search_default_group_by_gameweek': 1}</field>
+        <field name="context">{'search_default_group_by_event': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No Premier League fixtures found!

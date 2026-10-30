@@ -2,6 +2,7 @@
 {
     'name': 'Fantasy Premier League',
     'version': '1.2',
+    'license': 'LGPL-3',
     'category': 'Fantasy Premier League',
     'sequence': 30,
     'summary': 'Manage Fantasy Premier League',

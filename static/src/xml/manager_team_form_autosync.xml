@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="fantasy_premier_league.ManagerTeamFormAutoSync" t-inherit="web.FormView" t-inherit-mode="primary">
+        <xpath expr="//div[@t-ref='root']" position="attributes">
+            <attribute name="class">position-relative</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_form_view_container')]" position="before">
+            <div t-if="syncState.loading" class="o_fpl_sync_overlay">
+                <div class="o_fpl_sync_box">
+                    <div class="o_fpl_sync_spinner"/>
+                    <div class="o_fpl_sync_title">Fetching manager data...</div>
+                    <div class="o_fpl_sync_subtitle text-muted">Getting the latest data from Fantasy Premier League, please wait.</div>
+                </div>
+            </div>
+        </xpath>
+    </t>
+</templates>

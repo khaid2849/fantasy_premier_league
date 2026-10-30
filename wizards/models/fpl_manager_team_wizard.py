@@ -5,9 +5,9 @@ class FplManagerTeamWizard(models.TransientModel):
     _name = 'fpl.manager.team.wizard'
     _description = 'FPL Manager Team Wizard'
 
-    manager_id = fields.Char(string=_('Manager ID'))
-    refresh_token = fields.Char(string=_('FPL Refresh Token'))
-    tooltip = fields.Html(string=_('Tooltip'), default=lambda self: self._get_default_tooltip())
+    manager_id = fields.Char(string='Manager ID')
+    refresh_token = fields.Char(string='FPL Refresh Token')
+    tooltip = fields.Html(string='Tooltip', default=lambda self: self._get_default_tooltip())
 
     def _get_default_tooltip(self):
         tooltip = """<p><strong>How to get your Manager ID (Optional)?</strong><br/>

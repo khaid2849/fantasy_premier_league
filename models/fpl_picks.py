@@ -1,21 +1,21 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 
 class FPLPicks(models.Model):
     _name = 'fpl.picks'
     _description = 'FPL Picks'
 
-    element_id = fields.Many2one('fpl.elements', string=_('Player'))
-    position = fields.Char(string=_('Position'))
-    multiplier = fields.Integer(string=_('Multiplier'))
-    team_id = fields.Many2one('fpl.teams', string=_('Team'), related='element_id.fpl_team_id')
-    is_captain = fields.Boolean(string=_('Is Captain'))
-    is_vice_captain = fields.Boolean(string=_('Is Vice Captain'))
-    element_type_id = fields.Many2one('fpl.element.types', string=_('Element Type'))
-    selling_price = fields.Float(string=_('Selling Price'))
-    purchase_price = fields.Float(string=_('Purchase Price'))
+    element_id = fields.Many2one('fpl.elements', string='Player')
+    position = fields.Char(string='Position')
+    multiplier = fields.Integer(string='Multiplier')
+    team_id = fields.Many2one('fpl.teams', string='Team', related='element_id.fpl_team_id')
+    is_captain = fields.Boolean(string='Is Captain')
+    is_vice_captain = fields.Boolean(string='Is Vice Captain')
+    element_type_id = fields.Many2one('fpl.element.types', string='Element Type')
+    selling_price = fields.Float(string='Selling Price')
+    purchase_price = fields.Float(string='Purchase Price')
     currency_id = fields.Many2one('res.currency', string='Currency')
-    manager_id = fields.Many2one('fpl.manager.team', string=_('Manager'))
-    web_name = fields.Char(string=_('Web Name'), related='element_id.web_name')
+    manager_id = fields.Many2one('fpl.manager.team', string='Manager')
+    web_name = fields.Char(string='Web Name', related='element_id.web_name')
     team_display = fields.Html(compute='_compute_team_display')
 
     @api.depends('team_id')

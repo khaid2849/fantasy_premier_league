@@ -1,18 +1,18 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 
 class FPLChips(models.Model):
     _name = 'fpl.chips'
     _description = 'FPL Chips'
 
-    chip_id = fields.Char(string=_('ID'))
-    name = fields.Char(string=_('Name'))
-    number = fields.Integer(string=_('Number'))
-    start_event = fields.Integer(string=_('Start Event'))
-    stop_event = fields.Integer(string=_('Stop Event'))
-    chip_type = fields.Char(string=_('Chip Type'))
-    event_id = fields.Many2one('fpl.events', string=_('Event ID'))
+    chip_id = fields.Char(string='ID')
+    name = fields.Char(string='Name')
+    number = fields.Integer(string='Number')
+    start_event = fields.Integer(string='Start Event')
+    stop_event = fields.Integer(string='Stop Event')
+    chip_type = fields.Char(string='Chip Type')
+    event_id = fields.Many2one('fpl.events', string='Event ID')
     show_name = fields.Selection(
-        [('wildcard', _('Wildcard')), ('freehit', _('Free Hit')), ('bboost', _('Bench Boost')), ('3xc', _('Triple Captain'))],
+        [('wildcard', 'Wildcard'), ('freehit', 'Free Hit'), ('bboost', 'Bench Boost'), ('3xc', 'Triple Captain')],
         compute='_compute_show_name'
     )
     is_bench_boost = fields.Boolean(default=False)

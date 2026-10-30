@@ -1,4 +1,4 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 from odoo.exceptions import UserError
 from .fpl_api_mixin import FPLApiMixin
 from ..services.fpl_api_client import FPLApiException
@@ -10,21 +10,21 @@ class FplGameweekPickLines(models.Model, FPLApiMixin):
     _name = 'fpl.gameweek.pick.lines'
     _description = 'FPL Gameweek Pick Lines'
 
-    gameweek_pick_id = fields.Many2one('fpl.gameweek.picks', string=_('Gameweek Pick'))
-    element_id = fields.Many2one('fpl.elements', string=_('Player'))
-    position = fields.Integer(string=_('Points'))
-    multiplier = fields.Integer(string=_('Multiplier'))
-    is_captain = fields.Boolean(string=_('Is Captain'))
-    is_vice_captain = fields.Boolean(string=_('Is Vice Captain'))
-    element_type_id = fields.Many2one('fpl.element.types', string=_('Element Type'))
-    team_id = fields.Many2one('fpl.teams', string=_('Team'))
+    gameweek_pick_id = fields.Many2one('fpl.gameweek.picks', string='Gameweek Pick')
+    element_id = fields.Many2one('fpl.elements', string='Player')
+    position = fields.Integer(string='Points')
+    multiplier = fields.Integer(string='Multiplier')
+    is_captain = fields.Boolean(string='Is Captain')
+    is_vice_captain = fields.Boolean(string='Is Vice Captain')
+    element_type_id = fields.Many2one('fpl.element.types', string='Element Type')
+    team_id = fields.Many2one('fpl.teams', string='Team')
     team_code = fields.Char()
     team_name = fields.Char()
-    total_points = fields.Integer(string=_('Total points'))
+    total_points = fields.Integer(string='Total points')
     web_name = fields.Char()
     plural_name_short= fields.Char(related='element_type_id.plural_name_short')
-    element_stats_ids = fields.One2many('fpl.element.stats', 'pick_line_id', string=_('Stats'))
-    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string=_('Gameweek Fixutre'))
+    element_stats_ids = fields.One2many('fpl.element.stats', 'pick_line_id', string='Stats')
+    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Gameweek Fixutre')
 
 
     @api.model

@@ -20,7 +20,7 @@
         <field name="name">fpl.manager.team.form</field>
         <field name="model">fpl.manager.team</field>
         <field name="arch" type="xml">
-            <form string="Manager Team" delete="0" create="0" edit="0">
+            <form string="Manager Team" delete="0" create="0" edit="0" js_class="fpl_manager_team_form_autosync">
                 <header>
                     <button string="Sync Manager Data" class="btn-primary" type="object" name="action_sync_manager_data"/>
                     <button string="Update FPL Token" class="btn-secondary" type="object" name="action_verify_manager_data"/>
@@ -185,6 +185,9 @@
                                         decoration-muted="status_for_entry == 'unavailable'"/>
                                 </list>
                             </field>
+                        </page>
+                        <page string="Gameweek Picks" name="gameweek_picks">
+                            <widget name="fpl_manager_gameweek_picks"/>
                         </page>
                     </notebook>
 

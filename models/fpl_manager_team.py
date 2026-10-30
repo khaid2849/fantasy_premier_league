@@ -15,65 +15,65 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
 
     _description = 'FPL Manager Team'
     
-    manager_id = fields.Integer(string=_('Manager ID'))
+    manager_id = fields.Integer(string='Manager ID')
     # FPL OIDC tokens: the refresh token rotates on every exchange, see _get_fpl_access_token
-    refresh_token = fields.Char(string=_('FPL Refresh Token'), groups='base.group_system', copy=False)
-    access_token = fields.Char(string=_('FPL Access Token'), groups='base.group_system', copy=False)
-    access_token_expiry = fields.Datetime(string=_('Access Token Expiry'), groups='base.group_system', copy=False)
-    has_fpl_token = fields.Boolean(string=_('FPL Token Connected'), compute='_compute_has_fpl_token')
+    refresh_token = fields.Char(string='FPL Refresh Token', groups='base.group_system', copy=False)
+    access_token = fields.Char(string='FPL Access Token', groups='base.group_system', copy=False)
+    access_token_expiry = fields.Datetime(string='Access Token Expiry', groups='base.group_system', copy=False)
+    has_fpl_token = fields.Boolean(string='FPL Token Connected', compute='_compute_has_fpl_token')
     #Manager Data
-    manager_data_id = fields.Integer(string=_('Manager Data ID'))
-    date_of_birth = fields.Date(string=_('Date of Birth'), tracking=True)
-    default_event = fields.Integer(string=_('Default Event'), tracking=True)
-    dirty = fields.Boolean(string=_('Dirty'), tracking=True)
-    first_name = fields.Char(string=_('First Name'), tracking=True)
-    last_name = fields.Char(string=_('Last Name'), tracking=True)
-    full_name = fields.Char(string=_('Full Name'), tracking=True)
-    email = fields.Char(string=_('Email'), tracking=True)
-    gender = fields.Selection([('M', _('Male')), ('F', _('Female') )], string=_('Gender'), tracking=True)
-    manger_data_id = fields.Integer(string=_('ID'))
-    region = fields.Char(string=_('Region'), tracking=True)
-    country_id = fields.Many2one('res.country', string=_('Country'), tracking=True)
-    entry_email = fields.Boolean(string=_('Entry Email'), tracking=True)
-    entry_language = fields.Char(string=_('Entry Language'), tracking=True)
-    sso_id = fields.Char(string=_('SSO ID'), tracking=True)
+    manager_data_id = fields.Integer(string='Manager Data ID')
+    date_of_birth = fields.Date(string='Date of Birth', tracking=True)
+    default_event = fields.Integer(string='Default Event', tracking=True)
+    dirty = fields.Boolean(string='Dirty', tracking=True)
+    first_name = fields.Char(string='First Name', tracking=True)
+    last_name = fields.Char(string='Last Name', tracking=True)
+    full_name = fields.Char(string='Full Name', tracking=True)
+    email = fields.Char(string='Email', tracking=True)
+    gender = fields.Selection([('M', 'Male'), ('F', 'Female' )], string='Gender', tracking=True)
+    manger_data_id = fields.Integer(string='ID')
+    region = fields.Char(string='Region', tracking=True)
+    country_id = fields.Many2one('res.country', string='Country', tracking=True)
+    entry_email = fields.Boolean(string='Entry Email', tracking=True)
+    entry_language = fields.Char(string='Entry Language', tracking=True)
+    sso_id = fields.Char(string='SSO ID', tracking=True)
     #Manager Entry Summary
-    joined_time = fields.Datetime(string=_('Joined Time'), tracking=True)
-    started_event = fields.Integer(string=_('Started Event'), tracking=True)
-    favourite_team = fields.Many2one('fpl.teams', string=_('Favourite Team'), tracking=True)
-    player_first_name = fields.Char(string=_('Player First Name'), tracking=True)
-    player_last_name = fields.Char(string=_('Player Last Name'), tracking=True)
-    player_region_id = fields.Char(string=_('Player Region ID'), tracking=True)
-    player_region_name = fields.Char(string=_('Player Region Name'), tracking=True)
-    player_region_iso_code_short = fields.Char(string=_('Player Region ISO Code Short'), tracking=True)
-    player_region_iso_code_long = fields.Char(string=_('Player Region ISO Code Long'), tracking=True)
-    years_active = fields.Integer(string=_('Years Active'), tracking=True)
-    summary_overall_points = fields.Integer(string=_('Summary Overall Points'), tracking=True)
-    summary_overall_rank = fields.Integer(string=_('Summary Overall Rank'), tracking=True)
-    summary_event_points = fields.Integer(string=_('Current Gameweek points'), tracking=True)
-    summary_event_rank = fields.Integer(string=_('Current Gameweek Rank'), tracking=True)
-    current_event = fields.Integer(string=_('Current Gameweek'), tracking=True)
-    name = fields.Char(string=_('Name'), tracking=True)
-    name_change_blocked = fields.Boolean(string=_('Name Change Blocked'), tracking=True)
-    kits = fields.Char(string=_('Kits'), tracking=True)
-    last_deadline_bank = fields.Integer(string=_('Last Deadline Bank'), tracking=True)
-    last_deadline_value = fields.Integer(string=_('Last Deadline Value'), tracking=True)
-    last_deadline_total_transfers = fields.Integer(string=_('Last Deadline Total Transfers'), tracking=True)
-    club_badge_src = fields.Char(string=_('Club Badge Src'), tracking=True)
-    league_classic_ids = fields.One2many('fpl.leagues', 'manager_id', string=_('League Classic IDs'), domain=[('type', '=', 'classic')])
-    league_h2h_ids = fields.One2many('fpl.leagues', 'manager_id', string=_('League H2H IDs'), domain=[('type', '=', 'h2h')])
-    pick_ids = fields.One2many('fpl.picks', 'manager_id', string=_('Element IDs'))
-    manager_chip_ids = fields.One2many('fpl.manager.chips', 'manager_id', string=_('Manager Chips'))
-    picks_last_updated = fields.Datetime(string=_('Picks Last Updated'), tracking=True)
+    joined_time = fields.Datetime(string='Joined Time', tracking=True)
+    started_event = fields.Integer(string='Started Event', tracking=True)
+    favourite_team = fields.Many2one('fpl.teams', string='Favourite Team', tracking=True)
+    player_first_name = fields.Char(string='Player First Name', tracking=True)
+    player_last_name = fields.Char(string='Player Last Name', tracking=True)
+    player_region_id = fields.Char(string='Player Region ID', tracking=True)
+    player_region_name = fields.Char(string='Player Region Name', tracking=True)
+    player_region_iso_code_short = fields.Char(string='Player Region ISO Code Short', tracking=True)
+    player_region_iso_code_long = fields.Char(string='Player Region ISO Code Long', tracking=True)
+    years_active = fields.Integer(string='Years Active', tracking=True)
+    summary_overall_points = fields.Integer(string='Summary Overall Points', tracking=True)
+    summary_overall_rank = fields.Integer(string='Summary Overall Rank', tracking=True)
+    summary_event_points = fields.Integer(string='Current Gameweek points', tracking=True)
+    summary_event_rank = fields.Integer(string='Current Gameweek Rank', tracking=True)
+    current_event = fields.Integer(string='Current Gameweek', tracking=True)
+    name = fields.Char(string='Name', tracking=True)
+    name_change_blocked = fields.Boolean(string='Name Change Blocked', tracking=True)
+    kits = fields.Char(string='Kits', tracking=True)
+    last_deadline_bank = fields.Integer(string='Last Deadline Bank', tracking=True)
+    last_deadline_value = fields.Integer(string='Last Deadline Value', tracking=True)
+    last_deadline_total_transfers = fields.Integer(string='Last Deadline Total Transfers', tracking=True)
+    club_badge_src = fields.Char(string='Club Badge Src', tracking=True)
+    league_classic_ids = fields.One2many('fpl.leagues', 'manager_id', string='League Classic IDs', domain=[('type', '=', 'classic')])
+    league_h2h_ids = fields.One2many('fpl.leagues', 'manager_id', string='League H2H IDs', domain=[('type', '=', 'h2h')])
+    pick_ids = fields.One2many('fpl.picks', 'manager_id', string='Element IDs')
+    manager_chip_ids = fields.One2many('fpl.manager.chips', 'manager_id', string='Manager Chips')
+    picks_last_updated = fields.Datetime(string='Picks Last Updated', tracking=True)
 
     #Transfer Info
-    cost = fields.Integer(string=_('Cost'), tracking=True)
-    status = fields.Char(string=_('Status'), tracking=True)
-    limit = fields.Integer(string=_('Transfers Limit'), tracking=True)
-    made = fields.Float(string=_('Transfers Made'), tracking=True)
-    bank = fields.Float(string=_('In the Bank'), tracking=True)
-    value = fields.Float(string=_('Squad Value'), tracking=True)
-    status_for_entry = fields.Selection([('available', _('Available')), ('played', _('Played')), ('used', _('Used')), ('unavailable', _('Unavailable'))], string=_('Status for Entry'))
+    cost = fields.Integer(string='Cost', tracking=True)
+    status = fields.Char(string='Status', tracking=True)
+    limit = fields.Integer(string='Transfers Limit', tracking=True)
+    made = fields.Float(string='Transfers Made', tracking=True)
+    bank = fields.Float(string='In the Bank', tracking=True)
+    value = fields.Float(string='Squad Value', tracking=True)
+    status_for_entry = fields.Selection([('available', 'Available'), ('played', 'Played'), ('used', 'Used'), ('unavailable', 'Unavailable')], string='Status for Entry')
     
     used_bench_boost = fields.Boolean(compute='_computed_used_chips')
     used_wildcard = fields.Boolean(compute='_computed_used_chips')
@@ -81,8 +81,8 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
     used_triple_captain = fields.Boolean(compute='_computed_used_chips')
 
     #Entry History
-    entry_history_ids = fields.One2many('fpl.entry.history', 'manager_id', string=_('Entry History'))
-    entry_past_ids = fields.One2many('fpl.past', 'manager_id', string=_('Entry Past'))
+    entry_history_ids = fields.One2many('fpl.entry.history', 'manager_id', string='Entry History')
+    entry_past_ids = fields.One2many('fpl.past', 'manager_id', string='Entry Past')
 
     def _compute_has_fpl_token(self):
         for rec in self:
@@ -135,6 +135,23 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                 'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
             },
         }
+
+    def action_sync_on_open(self):
+        """Called by the form view each time a record is opened: refresh its data from the FPL API.
+        Falls back to public data when the stored token can no longer be refreshed, so that
+        opening the record never asks for credentials. Returns a warning message, or False."""
+        self.ensure_one()
+        public_only = False
+        warning = False
+        if self.has_fpl_token:
+            try:
+                self._get_fpl_access_token()
+            except UserError:
+                public_only = True
+                warning = _("FPL token expired or revoked, only public data was synced. "
+                            "Please click 'Update FPL Token' and paste a new refresh token.")
+        self.sync_manager_data(manager_id=self.manager_id, public_only=public_only)
+        return warning
 
     @api.model
     def _fpl_exchange_refresh_token(self, refresh_token):
@@ -404,91 +421,45 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         self._update_manager_picks_data(data.get('picks', []), manager_id)
 
     def _update_manager_picks_data(self, picks, manager_id):
+        """Make the manager's picks match the API result: update the picks that are still in the team,
+        create the new ones and delete every pick that is no longer returned by the API"""
+        Picks = self.env['fpl.picks']
+        existing_picks = Picks.search([('manager_id', '=', manager_id)])
+        elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search(
+            [('element_id', 'in', [pick.get('element') for pick in picks])])}
+        element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search(
+            [('element_type_id', 'in', [str(pick.get('element_type')) for pick in picks])])}
+
+        picks_to_keep = Picks
+        picks_to_create = []
         for pick in picks:
-            element_id = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))])
-            existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id), ('element_id', '=', element_id.id)])
-            element_type = self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))])
-            pick.update({
+            element = elements_dict.get(pick.get('element'))
+            if not element:
+                _logger.warning(f"Unknown FPL element {pick.get('element')} in picks of manager {manager_id}")
+                continue
+            element_type = element_types_dict.get(str(pick.get('element_type')))
+            vals = {
                 'manager_id': manager_id,
-                'element_id': element_id.id,
-                'element_type_id': element_type.id,
-                'selling_price': pick.get('selling_price') / 10,
-                'purchase_price': pick.get('purchase_price') / 10,
-            })
-            pick.pop('element')
-            pick.pop('element_type')
-
-            if existing_picks:
-                existing_picks.update(pick)
+                'element_id': element.id,
+                'element_type_id': element_type.id if element_type else False,
+                'position': pick.get('position'),
+                'multiplier': pick.get('multiplier'),
+                'is_captain': pick.get('is_captain'),
+                'is_vice_captain': pick.get('is_vice_captain'),
+                'selling_price': (pick.get('selling_price') or 0) / 10,
+                'purchase_price': (pick.get('purchase_price') or 0) / 10,
+            }
+            existing_pick = existing_picks.filtered(lambda p: p.element_id == element)[:1]
+            if existing_pick:
+                existing_pick.write(vals)
+                picks_to_keep |= existing_pick
             else:
-                self.env['fpl.picks'].create(pick)
+                picks_to_create.append(vals)
 
-        # if not picks:
-        #     existing_picks = self.env['fpl.picks'].search([('manager_id', '=', manager_id)])
-        #     if existing_picks:
-        #         existing_picks.unlink()
-        #     # return []
-        
-        # existing_picks = {(p.element_id.element_id, p.position): p for p in self.env['fpl.picks'].search([('manager_id', '=', manager_id)])}
-        
-        # element_ids = [pick.get('element') for pick in picks]
-        # element_type_ids = [pick.get('element_type') for pick in picks]
-        
-        # elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search([('element_id', 'in', element_ids)])}
-        # element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search([('element_type_id', 'in', [str(et_id) for et_id in element_type_ids])])}
-        
-        # picks_to_create = []
-        # picks_to_update = []
-        # current_picks = set()
-        
-        # for pick in picks:
-        #     element_id = pick.get('element')
-        #     position = pick.get('position')
-        #     current_picks.add((element_id, position))
-            
-        #     element = elements_dict.get(element_id)
-        #     element_type = element_types_dict.get(str(pick.get('element_type')))
-            
-        #     if not element or not element_type:
-        #         continue
-                
-        #     pick_vals = {
-        #         'element_id': element.id,
-        #         'position': position,
-        #         'multiplier': pick.get('multiplier'),
-        #         'is_captain': pick.get('is_captain'),
-        #         'is_vice_captain': pick.get('is_vice_captain'),
-        #         'element_type_id': element_type.id,
-        #         'selling_price': pick.get('selling_price') / 10,
-        #         'purchase_price': pick.get('purchase_price') / 10,
-        #         'manager_id': manager_id,
-        #     }
-            
-        #     existing_pick = existing_picks.get((element_id, position))
-        #     if existing_pick:
-        #         needs_update = False
-        #         for key, new_val in pick_vals.items():
-        #             if key != 'manager_id' and hasattr(existing_pick, key) and getattr(existing_pick, key) != new_val:
-        #                 needs_update = True
-        #                 break
-        #         if needs_update:
-        #             picks_to_update.append((existing_pick, pick_vals))
-        #     else:
-        #         picks_to_create.append(pick_vals)
-        
-        # obsolete_picks = [pick for key, pick in existing_picks.items() if key not in current_picks]
-        # if obsolete_picks:
-        #     for pick in obsolete_picks:
-        #         pick.unlink()
-        
-        # for pick, vals in picks_to_update:
-        #     pick.write(vals)
-        
-        # if picks_to_create:
-        #     created_picks = self.env['fpl.picks'].create(picks_to_create)
-        #     return [(0, 0, {'id': pick.id}) for pick in created_picks]
-        # else:
-        #     return []
+        # Players sold since the last sync (and duplicated picks) are no longer part of the team
+        (existing_picks - picks_to_keep).unlink()
+        if picks_to_create:
+            Picks.create(picks_to_create)
 
     def _update_manager_chips_data(self, chips, manager_id):
         if not chips:

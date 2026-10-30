@@ -1,23 +1,24 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 
 class FplLeagueStandingsResults(models.Model):
     _name = 'fpl.league.standings.results'
+    _description = 'FPL League Standings Results'
 
-    league_id = fields.Many2one('fpl.leagues', string=_('League'))
-    result_id = fields.Integer(string=_('ID'))
-    event_total = fields.Integer(string=_('Event total'))
-    player_name = fields.Char(string=_('Player name'))
-    rank = fields.Integer(string=_('Rank'))
-    last_rank = fields.Integer(string=_('Last rank'))
-    rank_sort = fields.Integer(string=_('Rank sort'))
-    total = fields.Integer(string=_('141'))
-    entry = fields.Integer(string=_('Entry'))
-    entry_name = fields.Char(string=_('Entry Name'))
-    has_played = fields.Boolean(string=_('Has played'))
-    phase_id = fields.Many2one('fpl.phases', string=_('Phase'))
-    rank_form = fields.Html(string=_('Rank'), compute='_compute_rank_form')
-    club_badge_src = fields.Char(string=_('Club Badge Src'))
-    name = fields.Html(string=_('Team & Manager'), compute='_compute_team_and_manager')
+    league_id = fields.Many2one('fpl.leagues', string='League')
+    result_id = fields.Integer(string='ID')
+    event_total = fields.Integer(string='Event total')
+    player_name = fields.Char(string='Player name')
+    rank = fields.Integer(string='Rank')
+    last_rank = fields.Integer(string='Last rank')
+    rank_sort = fields.Integer(string='Rank sort')
+    total = fields.Integer(string='141')
+    entry = fields.Integer(string='Entry')
+    entry_name = fields.Char(string='Entry Name')
+    has_played = fields.Boolean(string='Has played')
+    phase_id = fields.Many2one('fpl.phases', string='Phase')
+    rank_form = fields.Html(string='Rank', compute='_compute_rank_form')
+    club_badge_src = fields.Char(string='Club Badge Src')
+    name = fields.Html(string='Team & Manager', compute='_compute_team_and_manager')
 
     @api.depends('entry_name', 'player_name')
     def _compute_team_and_manager(self):

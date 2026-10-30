@@ -1,33 +1,33 @@
 import base64
 
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 from odoo.tools.misc import file_path
 
 class FPLTeams(models.Model):
     _name = 'fpl.teams'
     _description = 'FPL Teams'
 
-    name = fields.Char(string=_('Name'))
-    code = fields.Char(string=_('Code'), index=True)
-    form = fields.Char(string=_('Form'))
-    team_id = fields.Integer(string=_('Team ID'))
-    loss = fields.Integer(string=_('Loss'))
-    played = fields.Integer(string=_('Played'))
-    points = fields.Integer(string=_('Points'))
-    position = fields.Integer(string=_('Position'))
-    short_name = fields.Char(string=_('Short Name'))
-    strength = fields.Integer(string=_('Strength'))
-    team_division = fields.Char(string=_('Team Division'))
-    unavailable = fields.Boolean(string=_('Unavailable'))
-    win = fields.Integer(string=_('Win'))
-    draw = fields.Integer(string=_('Draw'))
-    strength_overall_home = fields.Integer(string=_('Strength Overall Home'))
-    strength_overall_away = fields.Integer(string=_('Strength Overall Away'))
-    strength_attack_home = fields.Integer(string=_('Strength Attack Home'))
-    strength_attack_away = fields.Integer(string=_('Strength Attack Away'))
-    strength_defence_home = fields.Integer(string=_('Strength Defence Home'))
-    strength_defence_away = fields.Integer(string=_('Strength Defence Away'))
-    pulse_id = fields.Integer(string=_('Pulse ID'))
-    element_ids = fields.One2many('fpl.elements', 'fpl_team_id', string=_('Elements'))
-    photo = fields.Image(string=_('Photo'))
+    name = fields.Char(string='Name')
+    code = fields.Char(string='Code', index=True)
+    form = fields.Char(string='Form')
+    team_id = fields.Integer(string='Team ID')
+    loss = fields.Integer(string='Loss')
+    played = fields.Integer(string='Played')
+    points = fields.Integer(string='Points')
+    position = fields.Integer(string='Position')
+    short_name = fields.Char(string='Short Name')
+    strength = fields.Integer(string='Strength')
+    team_division = fields.Char(string='Team Division')
+    unavailable = fields.Boolean(string='Unavailable')
+    win = fields.Integer(string='Win')
+    draw = fields.Integer(string='Draw')
+    strength_overall_home = fields.Integer(string='Strength Overall Home')
+    strength_overall_away = fields.Integer(string='Strength Overall Away')
+    strength_attack_home = fields.Integer(string='Strength Attack Home')
+    strength_attack_away = fields.Integer(string='Strength Attack Away')
+    strength_defence_home = fields.Integer(string='Strength Defence Home')
+    strength_defence_away = fields.Integer(string='Strength Defence Away')
+    pulse_id = fields.Integer(string='Pulse ID')
+    element_ids = fields.One2many('fpl.elements', 'fpl_team_id', string='Elements')
+    photo = fields.Image(string='Photo')
     

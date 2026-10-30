@@ -9,7 +9,7 @@ from ..services.fpl_pulse_api_client import FPLPulseLiveApiException
 
 _logger = logging.getLogger(__name__)
 
-RESULT_SELECTION = [('W', _('Win')), ('D', _('Draw')), ('L', _('Loss'))]
+RESULT_SELECTION = [('W', 'Win'), ('D', 'Draw'), ('L', 'Loss')]
 
 
 class FplTableStandings(models.Model, FPLApiMixin):
@@ -17,31 +17,31 @@ class FplTableStandings(models.Model, FPLApiMixin):
     _description = 'FPL Live Table Standings (Premier League source)'
     _order = 'position asc'
 
-    team_id = fields.Many2one('fpl.teams', string=_('Team'), required=True, index=True, ondelete='cascade')
-    team_code = fields.Char(related='team_id.code', string=_('Team Code'), store=True)
-    season = fields.Char(string=_('Season'))
+    team_id = fields.Many2one('fpl.teams', string='Team', required=True, index=True, ondelete='cascade')
+    team_code = fields.Char(related='team_id.code', string='Team Code', store=True)
+    season = fields.Char(string='Season')
 
-    position = fields.Integer(string=_('Position'))
-    starting_position = fields.Integer(string=_('Starting Position'))
-    played = fields.Integer(string=_('Played'))
-    won = fields.Integer(string=_('Won'))
-    drawn = fields.Integer(string=_('Drawn'))
-    lost = fields.Integer(string=_('Lost'))
-    goals_for = fields.Integer(string=_('Goals For'))
-    goals_against = fields.Integer(string=_('Goals Against'))
-    goal_difference = fields.Integer(string=_('Goal Difference'), compute='_compute_goal_difference', store=True)
-    points = fields.Integer(string=_('Points'))
+    position = fields.Integer(string='Position')
+    starting_position = fields.Integer(string='Starting Position')
+    played = fields.Integer(string='Played')
+    won = fields.Integer(string='Won')
+    drawn = fields.Integer(string='Drawn')
+    lost = fields.Integer(string='Lost')
+    goals_for = fields.Integer(string='Goals For')
+    goals_against = fields.Integer(string='Goals Against')
+    goal_difference = fields.Integer(string='Goal Difference', compute='_compute_goal_difference', store=True)
+    points = fields.Integer(string='Points')
 
-    record_ids = fields.One2many('fpl.table.standings.record', 'standings_id', string=_('Home / Away Breakdown'))
-    form_ids = fields.One2many('fpl.table.standings.form', 'standings_id', string=_('Form'))
+    record_ids = fields.One2many('fpl.table.standings.record', 'standings_id', string='Home / Away Breakdown')
+    form_ids = fields.One2many('fpl.table.standings.form', 'standings_id', string='Form')
 
-    next_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string=_('Next Fixture'))
-    next_opponent_id = fields.Many2one('fpl.teams', string=_('Next Opponent'))
-    next_opponent_code = fields.Char(related='next_opponent_id.code', string=_('Next Opponent Code'), store=True)
-    next_kickoff_time = fields.Datetime(string=_('Next Kickoff'))
-    next_is_home = fields.Boolean(string=_('Next Match at Home'))
+    next_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Next Fixture')
+    next_opponent_id = fields.Many2one('fpl.teams', string='Next Opponent')
+    next_opponent_code = fields.Char(related='next_opponent_id.code', string='Next Opponent Code', store=True)
+    next_kickoff_time = fields.Datetime(string='Next Kickoff')
+    next_is_home = fields.Boolean(string='Next Match at Home')
 
-    last_synced = fields.Datetime(string=_('Last Synced'))
+    last_synced = fields.Datetime(string='Last Synced')
 
     _sql_constraints = [
         ('team_id_uniq', 'unique(team_id)',
@@ -256,15 +256,15 @@ class FplTableStandingsRecord(models.Model):
     _name = 'fpl.table.standings.record'
     _description = 'FPL Table Standings Home/Away Breakdown'
 
-    standings_id = fields.Many2one('fpl.table.standings', string=_('Standings'), required=True, ondelete='cascade')
-    record_type = fields.Selection([('home', _('Home')), ('away', _('Away'))], string=_('Record Type'), required=True)
-    played = fields.Integer(string=_('Played'))
-    won = fields.Integer(string=_('Won'))
-    drawn = fields.Integer(string=_('Drawn'))
-    lost = fields.Integer(string=_('Lost'))
-    goals_for = fields.Integer(string=_('Goals For'))
-    goals_against = fields.Integer(string=_('Goals Against'))
-    points = fields.Integer(string=_('Points'))
+    standings_id = fields.Many2one('fpl.table.standings', string='Standings', required=True, ondelete='cascade')
+    record_type = fields.Selection([('home', 'Home'), ('away', 'Away')], string='Record Type', required=True)
+    played = fields.Integer(string='Played')
+    won = fields.Integer(string='Won')
+    drawn = fields.Integer(string='Drawn')
+    lost = fields.Integer(string='Lost')
+    goals_for = fields.Integer(string='Goals For')
+    goals_against = fields.Integer(string='Goals Against')
+    points = fields.Integer(string='Points')
 
 
 class FplTableStandingsForm(models.Model):
@@ -272,9 +272,9 @@ class FplTableStandingsForm(models.Model):
     _description = 'FPL Table Standings Recent Form'
     _order = 'sequence asc'
 
-    standings_id = fields.Many2one('fpl.table.standings', string=_('Standings'), required=True, ondelete='cascade')
-    sequence = fields.Integer(string=_('Sequence'))
-    result = fields.Selection(RESULT_SELECTION, string=_('Result'))
-    fixture_id = fields.Many2one('fpl.gameweek.fixtures', string=_('Fixture'))
-    opponent_id = fields.Many2one('fpl.teams', string=_('Opponent'))
-    match_date = fields.Datetime(string=_('Match Date'))
+    standings_id = fields.Many2one('fpl.table.standings', string='Standings', required=True, ondelete='cascade')
+    sequence = fields.Integer(string='Sequence')
+    result = fields.Selection(RESULT_SELECTION, string='Result')
+    fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Fixture')
+    opponent_id = fields.Many2one('fpl.teams', string='Opponent')
+    match_date = fields.Datetime(string='Match Date')

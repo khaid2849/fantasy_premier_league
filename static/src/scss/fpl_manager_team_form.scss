@@ -1,0 +1,43 @@
+.o_fpl_sync_overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba($o-view-background-color, 0.7);
+    backdrop-filter: blur(1px);
+
+    .o_fpl_sync_box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.5rem 2rem;
+        background-color: $o-view-background-color;
+        border: 1px solid $border-color;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+        text-align: center;
+    }
+
+    .o_fpl_sync_spinner {
+        width: 3rem;
+        height: 3rem;
+        border: 0.3rem solid rgba($primary, 0.2);
+        border-top-color: $primary;
+        border-radius: 50%;
+        animation: o_fpl_sync_spin 0.8s linear infinite;
+    }
+
+    .o_fpl_sync_title {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+}
+
+@keyframes o_fpl_sync_spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

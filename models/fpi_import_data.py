@@ -22,6 +22,7 @@ _logger = logging.getLogger(__name__)
 
 class FplImportData(models.Model, FPLApiMixin):
     _name = 'fpl.import.data'
+    _description = 'FPL Import Data'
 
     def cron_get_data_boostrap_static(self):
         try:

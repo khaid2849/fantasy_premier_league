@@ -1,0 +1,749 @@
+// Gameweek picks board (menu "Gameweek Picks" and tab of the manager form).
+// Colors come from the Odoo variables so that the dark mode bundle, which
+// recompiles this file with its own values, works out of the box.
+
+$o-fpl-purple: #37003c;
+$o-fpl-live: #e0004d;
+$o-fpl-pitch-1: #1f8a3d;
+$o-fpl-pitch-2: #23963f;
+$o-fpl-pitch-line: rgba(255, 255, 255, 0.45);
+$o-fpl-card-text: #1d1f25;
+
+.o_fpl_picks_action {
+    background-color: $o-webclient-background-color;
+}
+
+.o_fpl_picks {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    .o_fpl_picks_label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: $o-main-color-muted;
+    }
+}
+
+// The form tab already has the sheet padding
+.o_form_view .o_fpl_picks {
+    padding: 0.5rem 0 0;
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar
+// ---------------------------------------------------------------------------
+
+.o_fpl_picks_toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1.25rem;
+    padding: 0.875rem 1rem;
+    background-color: $o-view-background-color;
+    border: 1px solid $border-color;
+    border-radius: 0.75rem;
+
+    .o_fpl_picks_field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+
+        > .form-select {
+            min-width: 240px;
+        }
+    }
+}
+
+.o_fpl_gw_nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    .form-select {
+        min-width: 190px;
+        font-weight: 600;
+    }
+
+    .o_fpl_gw_step {
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+        border: 1px solid $border-color;
+        background-color: $o-view-background-color;
+
+        &:hover:not(:disabled) {
+            background-color: $o-gray-100;
+        }
+    }
+}
+
+.o_fpl_picks_placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 4rem 1rem;
+    text-align: center;
+}
+
+.o_fpl_picks_content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: opacity 0.2s;
+
+    &.o_fpl_picks_busy {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Summary
+// ---------------------------------------------------------------------------
+
+.o_fpl_picks_summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.o_fpl_picks_points {
+    flex: 1 1 220px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 0.75rem;
+    background-color: $o-fpl-purple;
+    color: #fff;
+
+    .o_fpl_picks_points_value {
+        font-size: 3.25rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .o_fpl_picks_points_label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+
+    .o_fpl_picks_points_side {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+        padding-left: 1rem;
+        border-left: 1px solid rgba(255, 255, 255, 0.25);
+        font-size: 0.8125rem;
+
+        b {
+            font-size: 0.9375rem;
+        }
+    }
+}
+
+.o_fpl_picks_stats {
+    flex: 3 1 560px;
+    display: grid;
+    // 8 figures: 4 x 2 (2 x 4 on phones), no empty cell
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid $border-color;
+    border-radius: 0.75rem;
+    background-color: $border-color;
+
+    .o_fpl_picks_stat {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 0.75rem 0.875rem;
+        background-color: $o-view-background-color;
+    }
+
+    .o_fpl_picks_stat_value {
+        font-size: 1.375rem;
+        font-weight: 700;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .o_fpl_picks_stat_note {
+        min-height: 1rem;
+        font-size: 0.75rem;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pitch and bench
+// ---------------------------------------------------------------------------
+
+.o_fpl_picks_main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.o_fpl_picks_left {
+    flex: 999 1 600px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.o_fpl_pitch {
+    position: relative;
+    overflow: hidden;
+    padding: 1.75rem 0.5rem 2.25rem;
+    border-radius: 0.875rem;
+    background: repeating-linear-gradient(180deg, $o-fpl-pitch-1 0 64px, $o-fpl-pitch-2 64px 128px);
+
+    .o_fpl_pitch_mark {
+        position: absolute;
+        border: 2px solid $o-fpl-pitch-line;
+        pointer-events: none;
+    }
+
+    .o_fpl_pitch_box,
+    .o_fpl_pitch_six {
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        border-top: 0;
+    }
+
+    .o_fpl_pitch_box {
+        width: 56%;
+        height: 120px;
+    }
+
+    .o_fpl_pitch_six {
+        width: 24%;
+        height: 44px;
+    }
+
+    .o_fpl_pitch_circle {
+        left: 50%;
+        bottom: -90px;
+        width: 180px;
+        height: 180px;
+        transform: translateX(-50%);
+        border-radius: 50%;
+    }
+
+    .o_fpl_pitch_halfway {
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-width: 2px 0 0;
+    }
+}
+
+.o_fpl_pitch_rows {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.75rem;
+    min-height: 600px;
+}
+
+.o_fpl_pitch_row,
+.o_fpl_bench_row {
+    display: flex;
+    justify-content: center;
+    gap: 2%;
+}
+
+.o_fpl_bench {
+    padding: 0.75rem 0.75rem 0.875rem;
+    background-color: $o-view-background-color;
+    border: 1px solid $border-color;
+    border-radius: 0.875rem;
+
+    .o_fpl_bench_head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin: 0 0.25rem 0.5rem;
+    }
+
+    .o_fpl_bench_slot {
+        flex: 0 1 112px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Player card
+// ---------------------------------------------------------------------------
+
+.o_fpl_card {
+    position: relative;
+    flex: 0 1 104px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.375rem 0.25rem 0.25rem;
+    border: 0;
+    border-radius: 0.625rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    .o_fpl_card_shirt {
+        display: flex;
+        justify-content: center;
+        padding: 0.125rem 0 0.25rem;
+        transition: transform 0.15s ease;
+
+        img {
+            width: 72%;
+            max-width: 64px;
+            aspect-ratio: 1;
+            object-fit: contain;
+            filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
+        }
+    }
+
+    &:hover .o_fpl_card_shirt {
+        transform: translateY(-3px);
+    }
+
+    &:focus-visible {
+        outline: 3px solid #ffd23f;
+        outline-offset: 2px;
+    }
+
+    .o_fpl_card_name {
+        display: block;
+        padding: 0.1875rem 0.25rem;
+        border-radius: 0.25rem 0.25rem 0 0;
+        background-color: $o-fpl-purple;
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .o_fpl_card_bottom {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3125rem;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0 0 0.25rem 0.25rem;
+        background-color: #fff;
+        color: $o-fpl-card-text;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .o_fpl_card_badge {
+        position: absolute;
+        top: 0.25rem;
+        left: 0.375rem;
+        z-index: 1;
+    }
+
+    .o_fpl_card_status {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.375rem;
+        z-index: 1;
+    }
+
+    .o_fpl_card_autosub {
+        position: absolute;
+        top: 1.875rem;
+        right: 0.375rem;
+        z-index: 1;
+    }
+}
+
+.o_fpl_pitch .o_fpl_card.o_fpl_card_selected {
+    background-color: rgba(255, 255, 255, 0.22);
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+}
+
+.o_fpl_bench .o_fpl_card {
+    flex: none;
+    background-color: $o-gray-100;
+
+    .o_fpl_card_shirt img {
+        width: 64%;
+        max-width: 56px;
+        filter: none;
+    }
+
+    .o_fpl_card_bottom {
+        background-color: $o-view-background-color;
+        color: $o-main-text-color;
+        border: 1px solid $border-color;
+        border-top: 0;
+    }
+
+    &.o_fpl_card_selected {
+        outline: 2px solid $o-main-text-color;
+        outline-offset: 1px;
+    }
+
+    // Bench players whose points do not count (no Bench Boost)
+    &.o_fpl_card_off {
+        .o_fpl_card_shirt img {
+            opacity: 0.75;
+        }
+
+        .o_fpl_card_name {
+            background-color: #5b6170;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Badges: captaincy, availability, automatic substitution, live match
+// ---------------------------------------------------------------------------
+
+.o_fpl_badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 0.25rem;
+    border: 2px solid #111;
+    border-radius: 999px;
+    background-color: #111;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+
+    &.o_fpl_badge_vice {
+        background-color: #fff;
+        color: #111;
+    }
+}
+
+.o_fpl_status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+    // Same colors as the FPL site: the lower the chance of playing, the darker
+    &.o_fpl_status_75 {
+        background-color: #ffe65b;
+        color: $o-fpl-card-text;
+    }
+
+    &.o_fpl_status_50 {
+        background-color: #ffab1b;
+        color: $o-fpl-card-text;
+    }
+
+    &.o_fpl_status_25 {
+        background-color: #d44401;
+        color: #fff;
+    }
+
+    &.o_fpl_status_injured {
+        background-color: #c0020d;
+        color: #fff;
+        font-size: 1.125rem;
+    }
+
+    // A red card
+    &.o_fpl_status_suspended {
+        width: 15px;
+        border-radius: 3px;
+        background-color: #c0020d;
+        box-shadow: 0 0 0 2px #fff;
+    }
+
+    &.o_fpl_status_out {
+        background-color: #5b6170;
+        color: #fff;
+    }
+}
+
+.o_fpl_autosub {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.6875rem;
+
+    &.o_fpl_autosub_in {
+        background-color: #0b6b3a;
+    }
+
+    &.o_fpl_autosub_out {
+        background-color: #b3261e;
+    }
+}
+
+.o_fpl_live_dot {
+    display: inline-block;
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: $o-fpl-live;
+    animation: o_fpl_live_pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes o_fpl_live_pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.o_fpl_legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.125rem;
+    padding: 0 0.25rem;
+    font-size: 0.8125rem;
+    color: $o-main-color-muted;
+
+    > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .o_fpl_badge,
+    .o_fpl_status,
+    .o_fpl_autosub {
+        min-width: 18px;
+        width: 18px;
+        height: 18px;
+        font-size: 0.625rem;
+    }
+
+    .o_fpl_status_suspended {
+        width: 12px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Selected player panel
+// ---------------------------------------------------------------------------
+
+.o_fpl_panel {
+    flex: 1 1 320px;
+    min-width: 0;
+    overflow: hidden;
+    background-color: $o-view-background-color;
+    border: 1px solid $border-color;
+    border-radius: 0.875rem;
+
+    .o_fpl_panel_head {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        padding: 1rem 1.125rem;
+        border-bottom: 1px solid $border-color;
+    }
+
+    .o_fpl_panel_shirt {
+        flex: none;
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+    }
+
+    .o_fpl_panel_name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .o_fpl_panel_role {
+        flex: none;
+        padding: 0.1875rem 0.625rem;
+        border-radius: 999px;
+        background-color: rgba($o-fpl-purple, 0.1);
+        color: $o-main-text-color;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .o_fpl_panel_body {
+        padding: 0.875rem 1.125rem 1.125rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .o_fpl_panel_news {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+        padding: 0.625rem 0.75rem;
+        border-radius: 0.5rem;
+        background-color: rgba(#ffab1b, 0.18);
+        font-size: 0.875rem;
+
+        &.o_fpl_status_injured,
+        &.o_fpl_status_suspended,
+        &.o_fpl_status_25 {
+            background-color: rgba(#c0020d, 0.12);
+        }
+
+        &.o_fpl_status_out {
+            background-color: $o-gray-100;
+        }
+
+        > .o_fpl_status {
+            margin-top: 0.0625rem;
+        }
+    }
+
+    .o_fpl_panel_available {
+        font-size: 0.875rem;
+        color: $o-main-color-muted;
+    }
+
+    .o_fpl_panel_fixture {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.875rem;
+        border-radius: 0.625rem;
+        background-color: $o-gray-100;
+    }
+
+    .o_fpl_panel_teams {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .o_fpl_panel_score {
+        min-width: 84px;
+        padding: 0 0.625rem;
+        border: 1px solid $border-color;
+        border-radius: 0.5rem;
+        background-color: $o-view-background-color;
+        font-size: 1.75rem;
+        text-align: center;
+    }
+
+    .o_fpl_panel_fixture_status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8125rem;
+        color: $o-main-color-muted;
+    }
+
+    .o_fpl_panel_table {
+        width: 100%;
+        font-size: 0.875rem;
+
+        th {
+            padding: 0.375rem 0;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: $o-main-color-muted;
+        }
+
+        td {
+            padding: 0.5rem 0;
+            border-top: 1px solid $border-color;
+        }
+    }
+
+    .o_fpl_panel_empty {
+        font-size: 0.875rem;
+        color: $o-main-color-muted;
+    }
+
+    .o_fpl_panel_total {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding-top: 0.625rem;
+        border-top: 2px solid $o-main-text-color;
+    }
+
+    .o_fpl_panel_total_value {
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Small screens
+// ---------------------------------------------------------------------------
+
+@include media-breakpoint-down(md) {
+    .o_fpl_pitch_rows {
+        min-height: 480px;
+        gap: 1.25rem;
+    }
+
+    .o_fpl_card {
+        .o_fpl_card_name {
+            font-size: 0.6875rem;
+        }
+
+        .o_fpl_card_bottom {
+            font-size: 0.8125rem;
+        }
+    }
+
+    .o_fpl_picks_stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_fpl_picks_toolbar .o_fpl_picks_field > .form-select,
+    .o_fpl_gw_nav .form-select {
+        min-width: 0;
+    }
+}

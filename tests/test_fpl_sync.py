@@ -244,6 +244,7 @@ class TestGameweekPicks(FplSyncCase):
         manager = self.env['fpl.manager.team'].create({'manager_id': 99999901, 'name': 'Test Team'})
         self.api.set('get_gameweek_picks', (99999901, 1), {
             'active_chip': '3xc',
+            'automatic_subs': [{'entry': 99999901, 'element_in': 90001, 'element_out': 90002, 'event': 1}],
             'entry_history': {'points': 40, 'total_points': 40, 'rank': 1234, 'bank': 5, 'value': 1003,
                               'event_transfers': 1, 'event_transfers_cost': 4, 'points_on_bench': 2},
             'picks': [
@@ -261,15 +262,36 @@ class TestGameweekPicks(FplSyncCase):
             {'id': 90002, 'stats': {'total_points': 2}, 'explain': []},
         ]})
 
+        self.keeper.write({'status': 'd', 'chance_of_playing_this_round': '75', 'news': 'Knock'})
+
         data = self.env['fpl.gameweek.picks'].get_gameweek_picks_data(manager.id, self.event.id)
         self.assertTrue(data['found'])
-        self.assertEqual(data['stats']['bank'], 0.5)
-        self.assertEqual(data['stats']['value'], 100.3)
-        self.assertEqual(data['stats']['event_transfers_cost'], 4, "A transfer hit is a number of points")
-        captain_line, = data['formation']['lineup_fwd']
-        bench_line, = data['formation']['sub_elements']
-        self.assertEqual(data['players'][captain_line]['total_points'], 21, "Triple captain: 7 x 3")
-        self.assertEqual(data['players'][bench_line]['total_points'], 2, "Bench: raw points")
+        summary = data['summary']
+        self.assertEqual(summary['bank'], 0.5)
+        self.assertEqual(summary['value'], 100.3)
+        self.assertEqual(summary['event_transfers_cost'], 4, "A transfer hit is a number of points")
+        self.assertEqual(summary['active_chip_name'], 'Triple Captain')
+        (captain,), = data['rows']
+        bench, = data['bench']
+        self.assertEqual(captain['points'], 21, "Triple captain: 7 x 3")
+        self.assertEqual((captain['raw_points'], captain['multiplier']), (7, 3))
+        self.assertEqual(bench['points'], 2, "Bench: raw points")
+        self.assertEqual(bench['bench_order'], 1)
+        self.assertEqual((captain['auto_sub'], bench['auto_sub']), ('in', 'out'))
+        self.assertEqual((captain['status'], captain['chance']), ('a', None))
+        self.assertEqual((bench['status'], bench['status_label'], bench['chance'], bench['news']),
+                         ('d', 'Doubtful', 75, 'Knock'))
+        self.assertEqual(captain['shirt_url'], f'/web/image/fpl.teams/{self.home.id}/shirt_image')
+
+        # The fixture of each team, seen from the player's side, with its breakdown
+        fixture, = captain['fixtures']
+        self.assertEqual((fixture['is_home'], fixture['opponent'], fixture['live']), (True, 'AWA', True))
+        self.assertEqual([stat['points'] for stat in fixture['stats']], [2, 4, 1])
+        away_fixture, = bench['fixtures']
+        self.assertEqual((away_fixture['is_home'], away_fixture['opponent'], away_fixture['stats']),
+                         (False, 'HOM', []))
+        self.assertTrue(data['has_live'])
+        captain_line = captain['id']
 
         line = self.env['fpl.gameweek.pick.lines'].browse(captain_line)
         self.assertEqual(len(line.element_stats_ids), 3, "Unknown scoring identifiers are kept")

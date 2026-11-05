@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import timedelta
 
 from odoo import _, api, fields, models
@@ -8,7 +9,8 @@ from ..services.fpl_api_client import FPLApiException
 
 _logger = logging.getLogger(__name__)
 
-POSITION_KEYS = {'GKP': 'lineup_gkp', 'DEF': 'lineup_def', 'MID': 'lineup_mid', 'FWD': 'lineup_fwd'}
+# Lines of the pitch, from the goal
+LINE_ORDER = ('GKP', 'DEF', 'MID', 'FWD')
 STARTING_XI = 11
 # Picks of a gameweek that is not final are refreshed at most that often
 LIVE_RESYNC_DELAY = timedelta(minutes=1)
@@ -92,7 +94,7 @@ class FplGameweekPicks(models.Model):
         gameweek_pick = self._fpl_upsert(self, {1: existing} if existing else {}, {1: vals})[1]
         live_elements = {element.get('id'): element for element in (results.get('live') or {}).get('elements') or []}
         self.env['fpl.gameweek.pick.lines']._sync_pick_lines(gameweek_pick, data.get('picks') or [], live_elements,
-                                                              event)
+                                                              event, data.get('automatic_subs') or [])
         return gameweek_pick
 
     def _needs_sync(self, event):
@@ -127,39 +129,83 @@ class FplGameweekPicks(models.Model):
         return gameweek_pick._get_pitch_data()
 
     def _get_pitch_data(self):
+        """Pitch view data: summary of the gameweek, the starting XI by line
+        (GKP, DEF, MID, FWD) and the bench, each player with its fixtures,
+        points breakdown and availability."""
         self.ensure_one()
-        formation = {key: [] for key in POSITION_KEYS.values()}
-        formation['sub_elements'] = []
-        players = {}
+        event = self.event_id
+        fixtures_by_team = defaultdict(list)
+        for fixture in self.env['fpl.gameweek.fixtures'].search([('event_id', '=', event.id)],
+                                                                order='kickoff_time, id'):
+            fixtures_by_team[fixture.team_h.id].append(fixture)
+            fixtures_by_team[fixture.team_a.id].append(fixture)
+        statuses = dict(self.env['fpl.elements']._fields['status']._description_selection(self.env))
+
+        rows = {position: [] for position in LINE_ORDER}
+        bench = []
         for line in self.pick_lines.sorted('position'):
-            position_name = line.element_type_id.plural_name_short or ''
+            player = line._get_pitch_player(fixtures_by_team.get(line.team_id.id, []), statuses)
             if line.position > STARTING_XI:
-                formation['sub_elements'].append(line.id)
-            elif position_name in POSITION_KEYS:
-                formation[POSITION_KEYS[position_name]].append(line.id)
-            players[line.id] = {
-                'name': line.web_name or line.element_id.web_name,
-                'team': line.team_name,
-                'position': position_name,
-                'multiplier': line.multiplier,
-                'is_captain': line.is_captain,
-                'is_vice_captain': line.is_vice_captain,
-                'total_points': line.total_points,
-                'team_code': line.team_code or '',
-                'team_id': line.team_id.id,
-            }
+                bench.append(player)
+            else:
+                rows.setdefault(player['position'], []).append(player)
+
+        players = bench + [player for row in rows.values() for player in row]
         return {
             'found': True,
-            'formation': formation,
-            'players': players,
-            'stats': {
+            'synced_at': fields.Datetime.to_string(self.synced_at) if self.synced_at else False,
+            'has_live': any(fixture['live'] for player in players for fixture in player['fixtures']),
+            'event': {
+                'id': event.id,
+                'name': event.name,
+                'finished': event.finished,
+                'is_current': event.is_current,
+            },
+            'summary': {
                 'points': self.points,
+                'average': round(event.average_entry_score or 0),
+                'highest': event.highest_score,
                 'total_points': self.total_points,
                 'rank': self.rank,
+                'percentile_rank': self.percentile_rank,
+                'overall_rank': self.overall_rank,
+                'overall_rank_change': self._get_overall_rank_change(),
                 'bank': self.bank,
                 'value': self.value,
                 'event_transfers': self.event_transfers,
                 'event_transfers_cost': self.event_transfers_cost,
-                'active_chip': self.active_chip,
+                'points_on_bench': self.points_on_bench,
+                'active_chip': self.active_chip or False,
+                'active_chip_name': self._get_chip_name(),
             },
+            # Unknown positions (should not happen) are shown on their own line
+            'rows': [row for row in rows.values() if row],
+            'bench': bench,
         }
+
+    def _get_overall_rank_change(self):
+        """Overall rank gained (> 0) or lost (< 0) since the previous gameweek,
+        False when unknown (first gameweek, history not synced)."""
+        self.ensure_one()
+        if not self.overall_rank or self.event_id.event_id <= 1:
+            return False
+        previous = self.env['fpl.entry.history'].search([
+            ('manager_id', '=', self.manager_id.id),
+            ('event_id.season', '=', self.event_id.season),
+            ('event_id.event_id', '=', self.event_id.event_id - 1),
+        ], limit=1)
+        if not previous.overall_rank:
+            return False
+        return previous.overall_rank - self.overall_rank
+
+    def _get_chip_name(self):
+        self.ensure_one()
+        names = {
+            '3xc': _("Triple Captain"),
+            'bboost': _("Bench Boost"),
+            'freehit': _("Free Hit"),
+            'wildcard': _("Wildcard"),
+            'manager': _("Assistant Manager"),
+        }
+        chip = self.active_chip
+        return names.get(chip, chip.replace('_', ' ').title()) if chip else False

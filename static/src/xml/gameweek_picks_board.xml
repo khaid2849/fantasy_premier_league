@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- "Gameweek Picks" menu -->
+    <t t-name="fantasy_premier_league.GameweekPicksAction">
+        <div class="o_fpl_picks_action h-100 overflow-auto">
+            <FplPicksBoard selectManager="true"/>
+        </div>
+    </t>
+
+    <!-- "Gameweek Picks" tab of the manager team form -->
+    <t t-name="fantasy_premier_league.ManagerGameweekPicks">
+        <FplPicksBoard managerId="props.record.resId || false"/>
+    </t>
+
+    <t t-name="fantasy_premier_league.PicksBoard">
+        <div class="o_fpl_picks">
+            <!-- Toolbar -->
+            <div class="o_fpl_picks_toolbar">
+                <div t-if="props.selectManager" class="o_fpl_picks_field">
+                    <label class="o_fpl_picks_label" for="o_fpl_picks_manager">Manager</label>
+                    <select id="o_fpl_picks_manager" class="form-select" t-att-disabled="state.loading" t-on-change="onManagerChange">
+                        <option t-if="!state.managers.length" value="">No manager team</option>
+                        <option t-foreach="state.managers" t-as="manager" t-key="manager.id"
+                                t-att-value="manager.id" t-att-selected="manager.id === state.managerId" t-esc="manager.name"/>
+                    </select>
+                </div>
+                <div class="o_fpl_picks_field">
+                    <label class="o_fpl_picks_label" for="o_fpl_picks_gameweek">Gameweek</label>
+                    <div class="o_fpl_gw_nav">
+                        <button type="button" class="btn o_fpl_gw_step" title="Previous gameweek" aria-label="Previous gameweek"
+                                t-att-disabled="!hasPrevious or state.loading" t-on-click="previousGameweek">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <select id="o_fpl_picks_gameweek" class="form-select" t-att-disabled="state.loading or !state.gameweeks.length" t-on-change="onGameweekChange">
+                            <option t-foreach="state.gameweeks" t-as="gw" t-key="gw.id" t-att-value="gw.id" t-att-selected="gw.id === state.gameweekId">
+                                <t t-esc="gw.name"/><t t-if="gw.is_current"> (current)</t>
+                            </option>
+                        </select>
+                        <button type="button" class="btn o_fpl_gw_step" title="Next gameweek" aria-label="Next gameweek"
+                                t-att-disabled="!hasNext or state.loading" t-on-click="nextGameweek">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-grow-1"/>
+                <div class="d-flex align-items-center gap-3">
+                    <span t-if="syncedAgo" class="text-muted small">Synced <t t-esc="syncedAgo"/></span>
+                    <button type="button" class="btn btn-primary" t-att-disabled="state.loading or !state.gameweekId or !state.managerId" t-on-click="refresh">
+                        <i t-attf-class="fa fa-refresh me-1 {{ state.loading ? 'fa-spin' : '' }}"/>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div t-if="state.loading and !state.data" class="o_fpl_picks_placeholder">
+                <i class="fa fa-circle-o-notch fa-spin fa-2x text-primary"/>
+                <span class="text-muted">Fetching gameweek picks...</span>
+            </div>
+            <t t-elif="state.data">
+                <t t-set="data" t-value="state.data"/>
+                <t t-call="fantasy_premier_league.PicksBoardContent"/>
+            </t>
+            <div t-elif="state.loaded" class="o_fpl_picks_placeholder text-muted" t-esc="emptyMessage"/>
+        </div>
+    </t>
+
+    <t t-name="fantasy_premier_league.PicksBoardContent">
+        <div t-attf-class="o_fpl_picks_content {{ state.loading ? 'o_fpl_picks_busy' : '' }}">
+            <!-- Summary -->
+            <div class="o_fpl_picks_summary">
+                <div class="o_fpl_picks_points">
+                    <div class="d-flex flex-column">
+                        <span class="o_fpl_picks_points_value" t-esc="data.summary.points"/>
+                        <span class="o_fpl_picks_points_label">GW points</span>
+                    </div>
+                    <div class="o_fpl_picks_points_side">
+                        <span>Average <b t-esc="data.summary.average"/></span>
+                        <span>Highest <b t-esc="data.summary.highest"/></span>
+                    </div>
+                </div>
+                <div class="o_fpl_picks_stats">
+                    <div t-foreach="summaryItems" t-as="item" t-key="item_index" class="o_fpl_picks_stat">
+                        <span class="o_fpl_picks_label" t-esc="item.label"/>
+                        <span class="o_fpl_picks_stat_value" t-esc="item.value"/>
+                        <span t-attf-class="o_fpl_picks_stat_note {{ item.noteClass or 'text-muted' }}" t-esc="item.note or ''"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_fpl_picks_main">
+                <div class="o_fpl_picks_left">
+                    <!-- Starting XI -->
+                    <div class="o_fpl_pitch">
+                        <div class="o_fpl_pitch_mark o_fpl_pitch_box"/>
+                        <div class="o_fpl_pitch_mark o_fpl_pitch_six"/>
+                        <div class="o_fpl_pitch_mark o_fpl_pitch_circle"/>
+                        <div class="o_fpl_pitch_mark o_fpl_pitch_halfway"/>
+                        <div class="o_fpl_pitch_rows">
+                            <div t-foreach="data.rows" t-as="row" t-key="row_index" class="o_fpl_pitch_row">
+                                <t t-foreach="row" t-as="player" t-key="player.id">
+                                    <t t-call="fantasy_premier_league.PicksPlayerCard"/>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bench -->
+                    <div class="o_fpl_bench">
+                        <div class="o_fpl_bench_head">
+                            <span class="fw-bold">Substitutes</span>
+                            <span class="text-muted small">
+                                <t t-if="isBenchBoost">Bench Boost active · +<t t-esc="benchPoints"/> pts</t>
+                                <t t-else=""><t t-esc="benchPoints"/> pts on the bench</t>
+                            </span>
+                        </div>
+                        <div class="o_fpl_bench_row">
+                            <div t-foreach="data.bench" t-as="player" t-key="player.id" class="o_fpl_bench_slot">
+                                <span class="o_fpl_picks_label text-center" t-esc="benchLabel(player)"/>
+                                <t t-call="fantasy_premier_league.PicksPlayerCard"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="o_fpl_legend">
+                        <span><span class="o_fpl_badge">C</span>Captain</span>
+                        <span><span class="o_fpl_badge o_fpl_badge_vice">V</span>Vice-captain</span>
+                        <span><span class="o_fpl_live_dot"/>Match in progress</span>
+                        <span><span class="o_fpl_autosub o_fpl_autosub_in"><i class="fa fa-arrow-up"/></span>Automatic sub</span>
+                        <span><span class="o_fpl_status o_fpl_status_75">!</span>75%</span>
+                        <span><span class="o_fpl_status o_fpl_status_50">!</span>50%</span>
+                        <span><span class="o_fpl_status o_fpl_status_25">!</span>25%</span>
+                        <span><span class="o_fpl_status o_fpl_status_injured">+</span>Injured</span>
+                        <span><span class="o_fpl_status o_fpl_status_suspended"/>Suspended</span>
+                        <span><span class="o_fpl_status o_fpl_status_out">!</span>Unavailable</span>
+                    </div>
+                </div>
+
+                <!-- Selected player -->
+                <aside t-if="selectedPlayer" class="o_fpl_panel" aria-label="Player details">
+                    <t t-set="player" t-value="selectedPlayer"/>
+                    <t t-call="fantasy_premier_league.PicksPlayerPanel"/>
+                </aside>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="fantasy_premier_league.PicksPlayerCard">
+        <t t-set="flag" t-value="statusFlag(player)"/>
+        <t t-set="badge" t-value="roleBadge(player)"/>
+        <button type="button"
+                t-att-class="{'o_fpl_card': true, 'o_fpl_card_selected': player.id === state.selectedId, 'o_fpl_card_off': !isBenchCounted(player)}"
+                t-att-aria-label="cardAriaLabel(player)"
+                t-att-aria-pressed="player.id === state.selectedId ? 'true' : 'false'"
+                t-on-click="() => this.selectPlayer(player.id)">
+            <span t-if="badge" t-attf-class="o_fpl_badge o_fpl_card_badge {{ badge === 'V' ? 'o_fpl_badge_vice' : '' }}" t-esc="badge"/>
+            <span t-if="flag" t-attf-class="o_fpl_status o_fpl_card_status {{ flag.cls }}" t-att-title="flag.title" t-esc="flag.icon"/>
+            <span t-if="player.auto_sub" t-attf-class="o_fpl_autosub o_fpl_card_autosub o_fpl_autosub_{{ player.auto_sub }}" t-att-title="autoSubTitle(player)">
+                <i t-attf-class="fa {{ player.auto_sub === 'in' ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
+            </span>
+            <span class="o_fpl_card_shirt"><img t-att-src="player.shirt_url" alt="" loading="lazy"/></span>
+            <span class="o_fpl_card_name" t-esc="player.name"/>
+            <span class="o_fpl_card_bottom">
+                <span t-if="isLive(player)" class="o_fpl_live_dot"/>
+                <t t-esc="cardBottom(player)"/>
+            </span>
+        </button>
+    </t>
+
+    <t t-name="fantasy_premier_league.PicksPlayerPanel">
+        <t t-set="flag" t-value="statusFlag(player)"/>
+        <div class="o_fpl_panel_head">
+            <img class="o_fpl_panel_shirt" t-att-src="player.shirt_url" alt=""/>
+            <div class="min-w-0">
+                <div class="o_fpl_panel_name" t-esc="player.full_name or player.name"/>
+                <div class="text-muted"><t t-esc="player.team_name"/> · <t t-esc="player.position_name"/></div>
+            </div>
+            <span t-if="roleLabel(player)" class="o_fpl_panel_role ms-auto" t-esc="roleLabel(player)"/>
+        </div>
+
+        <div class="o_fpl_panel_body">
+            <!-- Availability -->
+            <div t-if="flag" t-attf-class="o_fpl_panel_news {{ flag.cls }}">
+                <span t-attf-class="o_fpl_status {{ flag.cls }}" t-esc="flag.icon"/>
+                <div>
+                    <div class="fw-bold" t-esc="statusHeadline(player)"/>
+                    <div t-if="player.news" t-esc="player.news"/>
+                    <div t-if="newsDate(player)" class="small opacity-75">Updated <t t-esc="newsDate(player)"/></div>
+                </div>
+            </div>
+            <div t-else="" class="o_fpl_panel_available">
+                <i class="fa fa-check-circle text-success"/> Available
+            </div>
+
+            <!-- Fixtures and points breakdown -->
+            <div t-if="!player.fixtures.length" class="o_fpl_panel_fixture text-muted">No fixture this gameweek.</div>
+            <t t-foreach="player.fixtures" t-as="fixture" t-key="fixture.id">
+                <div class="o_fpl_panel_fixture">
+                    <div class="o_fpl_panel_teams">
+                        <span class="text-end" t-esc="fixture.home_name"/>
+                        <span class="o_fpl_panel_score" t-esc="fixtureCenter(fixture)"/>
+                        <span t-esc="fixture.away_name"/>
+                    </div>
+                    <span class="o_fpl_panel_fixture_status">
+                        <span t-if="fixture.live" class="o_fpl_live_dot"/>
+                        <t t-esc="fixtureStatus(fixture)"/>
+                    </span>
+                </div>
+                <table t-if="fixture.stats.length" class="o_fpl_panel_table">
+                    <thead>
+                        <tr>
+                            <th>Statistic</th>
+                            <th class="text-end">Value</th>
+                            <th class="text-end">Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="fixture.stats" t-as="stat" t-key="stat.id">
+                            <td t-esc="stat.label"/>
+                            <td class="text-end text-muted" t-esc="stat.value"/>
+                            <td class="text-end fw-bold" t-esc="stat.points"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <div t-elif="fixtureEmptyText(player, fixture)" class="o_fpl_panel_empty" t-esc="fixtureEmptyText(player, fixture)"/>
+            </t>
+
+            <div class="o_fpl_panel_total">
+                <span class="fw-semibold" t-esc="totalLabel(player)"/>
+                <span class="o_fpl_panel_total_value"><t t-esc="player.points"/> pts</span>
+            </div>
+            <button type="button" class="btn btn-outline-secondary w-100 mt-3" t-on-click="() => this.openPlayerStats(player.id)">
+                Open player stats
+            </button>
+        </div>
+    </t>
+</templates>

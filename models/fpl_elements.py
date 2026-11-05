@@ -1,37 +1,43 @@
 import logging
-import base64
+from datetime import timedelta
 
-from odoo import models, fields, api
-from .fpl_api_mixin import FPLApiMixin
-from odoo.exceptions import UserError
-from odoo.tools.misc import file_open
-from odoo.modules.module import get_module_resource
+from markupsafe import Markup
+
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+# Players refreshed per cron batch; the cron re-runs itself until every
+# player is done (see ir.cron progress API), committing between batches.
+SUMMARY_BATCH_SIZE = 100
+# A player summary is considered fresh for that long
+SUMMARY_MAX_AGE = timedelta(hours=5)
 
-class FPLElements(models.Model, FPLApiMixin):
+
+class FPLElements(models.Model):
     _name = 'fpl.elements'
+    _inherit = ['fpl.api.mixin']
     _description = 'FPL Elements'
+    _order = 'total_points desc, id'
 
-    def _default_element_photo(self):
-        return base64.b64encode(file_open('fantasy_premier_league/static/src/img/blank_image.png', 'rb').read())
-
-    element_id = fields.Integer(string='Element ID')
-    fpl_team_id = fields.Many2one('fpl.teams', string='FPL Team')
+    active = fields.Boolean(default=True,
+                            help="Players that left the Premier League are archived by the bootstrap sync.")
+    element_id = fields.Integer(string='Element ID', index=True)
+    fpl_team_id = fields.Many2one('fpl.teams', string='FPL Team', index=True)
     team_id = fields.Integer(string='Team ID', related='fpl_team_id.team_id')
     team_code = fields.Char(string='Team Code', related='fpl_team_id.code')
     can_transact = fields.Boolean(string='Can Transact')
     can_select = fields.Boolean(string='Can Select')
     chance_of_playing_next_round = fields.Char(string='Chance of Playing Next Round')
     chance_of_playing_this_round = fields.Char(string='Chance of Playing This Round')
-    code = fields.Char(string='Code')
+    # Stable player identifier across seasons ('element_id' is re-assigned every season)
+    code = fields.Char(string='Code', index=True)
     cost_change_event = fields.Float(string='Cost Change Event')
     cost_change_event_fall = fields.Float(string='Cost Change Event Fall')
     cost_change_start = fields.Float(string='Cost Change Start')
     cost_change_start_fall = fields.Float(string='Cost Change Start Fall')
     dreamteam_count = fields.Integer(string='Dreamteam Count')
-    element_type_id = fields.Many2one('fpl.element.types', string='Element Type')
+    element_type_id = fields.Many2one('fpl.element.types', string='Element Type', index=True)
     plural_name = fields.Char(string='Plural Name', related='element_type_id.plural_name')
     ep_next = fields.Char(string='EP Next')
     ep_this = fields.Char(string='EP This')
@@ -40,9 +46,11 @@ class FPLElements(models.Model, FPLApiMixin):
     form = fields.Char(string='Form')
     in_dreamteam = fields.Boolean(string='In Dreamteam')
     news = fields.Char(string='News')
-    news_added = fields.Char(string='News Added')    
+    news_added = fields.Char(string='News Added')
     now_cost = fields.Float(string='Now Cost')
-    photo = fields.Binary(string='Photo', default=_default_element_photo)
+    photo = fields.Binary(string='Photo')
+    photo_checksum = fields.Char(string='Photo Source Checksum', readonly=True, copy=False)
+    images_checked_at = fields.Datetime(string='Photo Checked At', readonly=True, copy=False)
     points_per_game = fields.Float(string='Points Per Game')
     removed = fields.Boolean(string='Removed')
     second_name = fields.Char(string='Second Name')
@@ -51,7 +59,7 @@ class FPLElements(models.Model, FPLApiMixin):
     squad_number = fields.Char(string='Squad Number')
     status = fields.Selection(
         [
-            ('a', 'Available'), 
+            ('a', 'Available'),
             ('u', 'Unavailable'),
             ('s', 'Suspended'),
             ('d', 'Doubtful'),
@@ -130,125 +138,176 @@ class FPLElements(models.Model, FPLApiMixin):
     clean_sheets_per_90 = fields.Float(string='Clean Sheets Per 90')
     defensive_contribution_per_90 = fields.Float(string='Defensive Contribution Per 90')
     currency_id = fields.Many2one('res.currency', string='Currency')
-    display_name = fields.Char(string='Display Name', compute='_compute_display_name')
-    display_player_with_photo = fields.Html(compute='_compute_display_player_with_photo')
+    display_player_with_photo = fields.Html(compute='_compute_display_player_with_photo', sanitize=False)
     history_ids = fields.One2many('fpl.element.summary.history', 'element_id', string='History IDs')
     history_past_ids = fields.One2many('fpl.element.summary.history.past', 'element_id', string='History Past IDs')
-    fixutres_ids = fields.One2many('fpl.element.summary.fixture', 'element_id', string='Fixutres IDs')
-    current_season = fields.Char(string='Current Season', compute='_compute_current_season')
-    summary_name_form = fields.Html(compute='_compute_summary_name_form')
+    fixture_ids = fields.One2many(
+        'fpl.element.summary.fixture', 'element_id', string='Upcoming Fixtures',
+        domain=[('finished', '=', False)],
+    )
+    summary_name_form = fields.Html(compute='_compute_summary_name_form', sanitize=False)
+    summary_synced_at = fields.Datetime(string='Summary Synced At', readonly=True, copy=False)
 
-    @api.depends()
-    def _compute_current_season(self):
-        events_model = self.env['fpl.events']
-        current_event = events_model.search([('is_current', '=', True)], limit=1)
-        if not current_event:
-            # Off-season / before the first deadline of the new season: fall
-            # back to the most recent known event.
-            current_event = events_model.search([], order='deadline_time desc', limit=1)
-        for rec in self:
-            rec.current_season = current_event.season
-
-    @api.depends('first_name', 'second_name')
+    @api.depends('first_name', 'second_name', 'web_name')
     def _compute_display_name(self):
         for rec in self:
-            rec.display_name = f"{rec.first_name} {rec.second_name}"
+            rec.display_name = ' '.join(filter(None, [rec.first_name, rec.second_name])) or rec.web_name or ''
 
-    @api.depends('fpl_team_id', 'web_name', 'plural_name')
+    @api.depends('web_name', 'fpl_team_id.name', 'element_type_id.singular_name_short')
     def _compute_summary_name_form(self):
         for rec in self:
-            rec.summary_name_form = f'<b>{rec.web_name}</b> <br/><span style="color: #af99b1; font-size:11px">{rec.fpl_team_id.name} {rec.element_type_id.singular_name_short}</span>'
-    
-    @api.depends('photo', 'display_name', 'code')
+            rec.summary_name_form = Markup(
+                '<b>%s</b><br/><span style="color: #af99b1; font-size: 11px">%s %s</span>'
+            ) % (rec.web_name or '', rec.fpl_team_id.name or '', rec.element_type_id.singular_name_short or '')
+
+    @api.depends('summary_name_form')
     def _compute_display_player_with_photo(self):
         for rec in self:
-            avatar_path = get_module_resource(
-                'fantasy_premier_league', 'static', 'src', 'img', 'players_avatar', f'{rec.code}.png'
-            )
-            if avatar_path:
-                element_photo_src = f'/fantasy_premier_league/static/src/img/players_avatar/{rec.code}.png'
-            else:
-                element_photo_src = '/fantasy_premier_league/static/src/img/blank_image.png'
-            rec.display_player_with_photo = f'<div class="d-flex align-items-center"><div><img src={element_photo_src} style="width: 40px; height: 40px;"/></div>&nbsp;<div>{rec.summary_name_form}</div></div>'
+            # Served (and HTTP-cached) by /web/image: no file-system lookup per row
+            photo_src = f'/web/image/fpl.elements/{rec.id}/photo/80x80' if rec.id else ''
+            rec.display_player_with_photo = Markup(
+                '<div class="d-flex align-items-center gap-2">'
+                '<img src="%s" style="width: 40px; height: 40px; object-fit: contain;"/>'
+                '<div>%s</div></div>'
+            ) % (photo_src, rec.summary_name_form)
 
-    def cron_get_data_element_summary(self):
-        try:
-            elements = self.search([('removed', '=', False)])
-            for element in elements:
-                element_summary = self.sync_from_fpl_api('get_element_summary', player_id=element.element_id)
-                history = element_summary.get('history')
-                history_past = element_summary.get('history_past')
-                fixtures = element_summary.get('fixtures')
+    # ------------------------------------------------------------------
+    # Element summary sync (history / past seasons / upcoming fixtures)
+    # ------------------------------------------------------------------
 
-                self._sync_element_history_data(element, history)
-                self._sync_element_history_past_data(element, history_past)
-                self._sync_element_fixture_data(element, fixtures)
+    @api.model
+    def cron_get_data_element_summary(self, batch_size=SUMMARY_BATCH_SIZE):
+        """Refresh the per-player summaries, a batch of players per call.
 
-            _logger.info("Element summary data sync completed successfully")
-            
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
+        The players with the oldest summary go first; ``_notify_progress``
+        makes ir.cron call this method again right away (committing between
+        calls) until every player is fresh, so a failure only loses the
+        current batch and the job never holds one huge transaction.
+        """
+        stale_domain = [
+            ('removed', '=', False),
+            '|', ('summary_synced_at', '=', False),
+            ('summary_synced_at', '<', fields.Datetime.now() - SUMMARY_MAX_AGE),
+        ]
+        elements = self.search(stale_domain, order='summary_synced_at asc nulls first, id', limit=batch_size)
+        if elements:
+            elements._sync_element_summaries()
+        remaining = self.search_count(stale_domain)
+        self.env['ir.cron']._notify_progress(done=len(elements), remaining=remaining)
+        _logger.info("Element summary sync: %s players done, %s remaining", len(elements), remaining)
+        return remaining
 
-    
-    def _sync_element_history_data(self, element, history):
-        for history_item in history:
-            fixture_id = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', history_item.get('fixture'))])
-            element_history = self.env['fpl.element.summary.history'].search([('element_id', '=', element.id), ('fixture_id', '=', fixture_id.id)])
+    def _sync_element_summaries(self):
+        """Fetch the summaries of ``self`` concurrently, then store them with a
+        single upsert per model.
 
-            history_item.update({
-                'element_id': element.id,
-                'fixture_id': fixture_id.id,
-                'opponent_team': self.env['fpl.teams'].search([('team_id', '=', history_item.get('opponent_team'))]).id,
-                'kickoff_time': fixture_id.kickoff_time,
-                'is_modified': history_item.get('modified'),
-                'value': history_item.get('value') / 10,
+        Upserting player by player is much slower: every unlink invalidates
+        the ORM cache, so the next player re-fetches all the prefetched rows.
+        """
+        results, errors = self._fpl_fetch_many({
+            element.id: ('get_element_summary', (element.element_id,)) for element in self
+        })
+        for element_id, error in errors.items():
+            _logger.warning("Element summary of %s failed: %s", self.browse(element_id).web_name, error)
+
+        synced = self.browse(list(results))
+        if synced:
+            context = synced._get_summary_sync_context()
+            history_vals, past_vals, upcoming_vals = {}, {}, {}
+            for element in synced:
+                summary = results[element.id] or {}
+                history_vals.update(element._prepare_history_vals(summary.get('history') or [], context))
+                past_vals.update(element._prepare_history_past_vals(summary.get('history_past') or []))
+                upcoming_vals.update(element._prepare_upcoming_fixture_vals(summary.get('fixtures') or [], context))
+            self._fpl_upsert('fpl.element.summary.history', context['history'], history_vals)
+            self._fpl_upsert('fpl.element.summary.history.past', context['past'], past_vals)
+            # The API only lists the fixtures not played yet: the rows of the
+            # fixtures played since the last sync are deleted.
+            self._fpl_upsert('fpl.element.summary.fixture', context['upcoming'], upcoming_vals, unlink_missing=True)
+        # Failed players are retried at the next run, not in a loop
+        self.write({'summary_synced_at': fields.Datetime.now()})
+
+    def _get_summary_sync_context(self):
+        """Everything the summary sync of ``self`` needs, loaded with a few queries."""
+        season = self.env['fpl.events']._get_current_season()
+
+        def existing_rows(model):
+            return {
+                (rec.element_id.id, rec._get_summary_key()): rec
+                for rec in self.env[model].search([('element_id', 'in', self.ids)])
+            }
+
+        return {
+            'fixtures': self.env['fpl.gameweek.fixtures']._get_fixtures_by_api_id(season),
+            'events': self.env['fpl.events']._get_events_by_api_id(season),
+            'teams': self.env['fpl.teams']._get_teams_by_api_id(),
+            'history': existing_rows('fpl.element.summary.history'),
+            'past': existing_rows('fpl.element.summary.history.past'),
+            'upcoming': existing_rows('fpl.element.summary.fixture'),
+        }
+
+    def _prepare_history_vals(self, history, context):
+        """Matches played this season: ``{(element id, fixture id): vals}``"""
+        self.ensure_one()
+        History = self.env['fpl.element.summary.history']
+        no_team = self.env['fpl.teams']
+        vals_by_key = {}
+        for item in history:
+            fixture = context['fixtures'].get(item.get('fixture'))
+            if not fixture:
+                continue
+            vals = self._fpl_filter_vals(History._name, item, exclude={'value', 'kickoff_time', 'opponent_team'})
+            vals.update({
+                'element_id': self.id,
+                'fixture_id': fixture.id,
+                'opponent_team': context['teams'].get(item.get('opponent_team'), no_team).id,
+                'kickoff_time': self._fpl_parse_datetime(item.get('kickoff_time')),
+                'is_modified': bool(item.get('modified')),
+                'value': self._fpl_tenths(item.get('value')),
             })
-            history_item.pop('element')
-            history_item.pop('fixture')
-            history_item.pop('modified')
+            vals_by_key[(self.id, fixture.id)] = vals
+        return vals_by_key
 
-            if element_history:
-                element_history.write(history_item)
-            else:
-                self.env['fpl.element.summary.history'].create(history_item)
-    
-    def _sync_element_history_past_data(self, element, history_past):
+    def _prepare_history_past_vals(self, history_past):
+        """Previous seasons: ``{(element id, season name): vals}``"""
+        self.ensure_one()
+        Past = self.env['fpl.element.summary.history.past']
+        vals_by_key = {}
         for past in history_past:
-            element_history_past = self.env['fpl.element.summary.history.past'].search([('season_name', '=', past.get('season_name')),('element_id', '=', element.id), ('element_code', '=', past.get('element_code'))])
-            past.update({
-                'element_id': element.id,
-                'element_code': past.get('element_code'),
-                'start_cost': past.get('start_cost') / 10,
-                'end_cost': past.get('end_cost') / 10,
+            vals = self._fpl_filter_vals(Past._name, past, exclude={'start_cost', 'end_cost'})
+            vals.update({
+                'element_id': self.id,
+                'start_cost': self._fpl_tenths(past.get('start_cost')),
+                'end_cost': self._fpl_tenths(past.get('end_cost')),
             })
-            
-            if element_history_past:
-                element_history_past.write(past)
-            else:
-                self.env['fpl.element.summary.history.past'].create(past)
-    
-    def _sync_element_fixture_data(self, element, fixtures):
-        for fixture in fixtures:
-            fixture_id = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', fixture.get('id'))])
-            element_fixture = self.env['fpl.element.summary.fixture'].search(
-                [
-                    ('element_id', '=', element.id), 
-                    ('fixture_id', '=', fixture_id.id),
-                ]
-            )
+            vals_by_key[(self.id, past.get('season_name'))] = vals
+        return vals_by_key
 
-            fixture.update({
-                'element_id': element.id,
-                'fixture_id': fixture_id.id,
-                'kickoff_time': fixture_id.kickoff_time,
-                'event_name': fixture_id.event_id.name,
-                'event_id': fixture_id.event_id.id,
-            })
-            fixture.pop('id')
-            fixture.pop('event')
-
-            if element_fixture:
-                element_fixture.update(fixture)
-            else:
-                self.env['fpl.element.summary.fixture'].create(fixture)
+    def _prepare_upcoming_fixture_vals(self, fixtures, context):
+        """Fixtures not played yet: ``{(element id, fixture id): vals}``"""
+        self.ensure_one()
+        no_team = self.env['fpl.teams']
+        vals_by_key = {}
+        for item in fixtures:
+            fixture = context['fixtures'].get(item.get('id'))
+            if not fixture:
+                continue
+            event = context['events'].get(item.get('event'))
+            vals_by_key[(self.id, fixture.id)] = {
+                'element_id': self.id,
+                'fixture_id': fixture.id,
+                'code': item.get('code'),
+                'team_h': context['teams'].get(item.get('team_h'), no_team).id,
+                'team_a': context['teams'].get(item.get('team_a'), no_team).id,
+                'team_h_score': item.get('team_h_score'),
+                'team_a_score': item.get('team_a_score'),
+                'event_id': event.id if event else False,
+                'event_name': item.get('event_name') or (event.name if event else False),
+                'finished': bool(item.get('finished')),
+                'minutes': item.get('minutes'),
+                'provisional_start_time': bool(item.get('provisional_start_time')),
+                'kickoff_time': self._fpl_parse_datetime(item.get('kickoff_time')),
+                'is_home': bool(item.get('is_home')),
+                'difficulty': item.get('difficulty'),
+            }
+        return vals_by_key

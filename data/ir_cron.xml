@@ -9,7 +9,6 @@
         <field name="active">True</field>
         <field name="interval_number">6</field>
         <field name="interval_type">hours</field>
-        <field name="active">True</field>
     </record>
 
     <record id="ir_cron_get_gameweek_fixtures" model="ir.cron">
@@ -18,14 +17,12 @@
         <field name="user_id" ref="base.user_root"/>
         <field name="state">code</field>
         <field name="code">model.cron_get_data_gameweek_fixutres(get_all=False, manual_gameweek=None, send_live_notifications=True)</field>
-        <!-- interval_type only supports minutes/hours/days/.../months, and
-             the cron dispatcher itself only wakes up ~once a minute, so 1
-             minute is the floor this field can express - it is NOT the
-             real live-tracking cadence. During a live match the job loops
-             internally every ~15s and self-triggers its own immediate
-             re-run via ir.cron's trigger mechanism (see
-             cron_get_data_gameweek_fixutres's docstring); this interval is
-             only the fallback that notices a match has kicked off. -->
+        <!-- 1 minute is the floor ir.cron can express - it is NOT the real
+             live-tracking cadence. During a live match the job loops
+             internally every ~15s and re-triggers itself right away (see
+             cron_get_data_gameweek_fixutres's docstring). When nothing is
+             being played the job does not call the API, apart from a full
+             season refresh every 30 minutes. -->
         <field name="interval_number">1</field>
         <field name="interval_type">minutes</field>
         <field name="active">True</field>
@@ -36,37 +33,27 @@
         <field name="model_id" ref="fantasy_premier_league.model_fpl_elements"/>
         <field name="user_id" ref="base.user_root"/>
         <field name="state">code</field>
+        <!-- Processes the players in batches and re-runs itself until all of
+             them are refreshed (ir.cron progress API), committing between
+             batches. -->
         <field name="code">model.cron_get_data_element_summary()</field>
         <field name="interval_number">6</field>
         <field name="interval_type">hours</field>
         <field name="active">True</field>
     </record>
 
-    <record id="ir_cron_download_player_avatar" model="ir.cron">
-        <field name="name">Cron Download Player Avatar</field>
+    <!-- Club badges, kits and player photos, stored in database. Only the
+         missing images are downloaded; the bootstrap sync also triggers this
+         job as soon as new clubs or players appear (new season). -->
+    <record id="ir_cron_download_fpl_images" model="ir.cron">
+        <field name="name">Cron Download FPL Images</field>
         <field name="model_id" ref="fantasy_premier_league.model_fpl_import_data"/>
         <field name="user_id" ref="base.user_root"/>
         <field name="state">code</field>
-        <field name="code">model.download_player_avatar()</field>
-        <field name="active">False</field>
-    </record>
-
-    <record id="ir_cron_download_team_logo" model="ir.cron">
-        <field name="name">Cron Download Team Logo</field>
-        <field name="model_id" ref="fantasy_premier_league.model_fpl_import_data"/>
-        <field name="user_id" ref="base.user_root"/>
-        <field name="state">code</field>
-        <field name="code">model.download_team_logo()</field>
-        <field name="active">False</field>
-    </record>
-
-    <record id="ir_cron_download_team_shirts" model="ir.cron">
-        <field name="name">Cron Download Team Shirts</field>
-        <field name="model_id" ref="fantasy_premier_league.model_fpl_import_data"/>
-        <field name="user_id" ref="base.user_root"/>
-        <field name="state">code</field>
-        <field name="code">model.download_team_shirts()</field>
-        <field name="active">False</field>
+        <field name="code">model.cron_download_images()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
     </record>
 
     <record id="ir_cron_sync_manager_data" model="ir.cron">

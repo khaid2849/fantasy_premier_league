@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 {
     'name': 'Fantasy Premier League',
-    'version': '1.2',
+    'version': '2.2',
     'license': 'LGPL-3',
     'category': 'Fantasy Premier League',
     'sequence': 30,
@@ -13,7 +13,7 @@
         It also allows you to import your FPL team from the FPL website.
     """,
     'website': 'https://fantasy.premierleague.com/',
-    'depends': ['base', 'mail', 'web'],
+    'depends': ['base', 'mail', 'web', 'bus'],
     'data': [
         'security/ir.model.access.csv',
 
@@ -25,13 +25,13 @@
         'views/fpl_table_standings_view.xml',
         'views/fpl_elements_view.xml',
         'views/fpl_gameweek_fixtures_view.xml',
+        'views/fpl_gameweek_picks_view.xml',
         'views/fpl_leagues_view.xml',
         'views/fpl_analytics_views.xml',
         'views/menuitem.xml',
 
         'wizards/views/fpl_manager_team_wizard_view.xml',
         'wizards/views/fpl_manager_team_history_wizard_view.xml',
-        'wizards/views/fpl_gameweek_pick_lines_wizard_view.xml',
     ],
     'demo': [],
     'external_dependencies': {

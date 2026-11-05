@@ -1,8 +1,10 @@
-from odoo import models, fields, api
+from odoo import api, fields, models
+
 
 class FPLEvents(models.Model):
     _name = 'fpl.events'
     _description = 'FPL Events'
+    _order = 'season desc, event_id'
 
     event_id = fields.Integer(string='ID', index=True)
     name = fields.Char(string='Name')
@@ -19,7 +21,7 @@ class FPLEvents(models.Model):
     deadline_time_game_offset = fields.Integer(string='Deadline Time Game Offset')
     highest_score = fields.Integer(string='Highest Score')
     is_previous = fields.Boolean(string='Is Previous')
-    is_current = fields.Boolean(string='Is Current')
+    is_current = fields.Boolean(string='Is Current', index=True)
     is_next = fields.Boolean(string='Is Next')
     cup_leagues_created = fields.Boolean(string='Cup Leagues Created')
     h2h_ko_matches_created = fields.Boolean(string='H2H KO Matches Created')
@@ -35,6 +37,7 @@ class FPLEvents(models.Model):
     most_vice_captained = fields.Integer(string='Most Vice Captained')
     chip_ids = fields.One2many('fpl.chips', 'event_id', string='Chip Plays')
     event_chip_plays_ids = fields.One2many('fpl.event.chip.plays', 'event_id', string='Event Chip Plays')
+    is_current_season = fields.Boolean(compute='_compute_is_current_season', search='_search_is_current_season')
 
     _sql_constraints = [
         ('event_id_season_uniq', 'unique(event_id, season)',
@@ -59,6 +62,18 @@ class FPLEvents(models.Model):
             return f"{year}/{year + 1}"
         return f"{year - 1}/{year}"
 
+    @api.depends('season')
+    def _compute_is_current_season(self):
+        current_season = self._get_current_season()
+        for rec in self:
+            rec.is_current_season = bool(current_season) and rec.season == current_season
+
+    def _search_is_current_season(self, operator, value):
+        if operator not in ('=', '!='):
+            raise NotImplementedError("Unsupported search on 'is current season'.")
+        positive = (operator == '=') == bool(value)
+        return [('season', '=' if positive else '!=', self._get_current_season())]
+
     def _compute_fold(self):
         open_events = self.browse()
         for season in set(self.mapped('season')):
@@ -67,3 +82,23 @@ class FPLEvents(models.Model):
                 or self.search([('season', '=', season)], order='event_id desc', limit=1)
         for rec in self:
             rec.fold = rec not in open_events
+
+    @api.model
+    def _get_current_event(self):
+        """The live gameweek; off-season (or before GW1) the latest known one."""
+        return self.search([('is_current', '=', True)], order='deadline_time desc', limit=1) \
+            or self.search([], order='deadline_time desc', limit=1)
+
+    @api.model
+    def _get_current_season(self):
+        """Current season label, e.g. '2026/2027' (False when nothing is synced yet)."""
+        return self._get_current_event().season or False
+
+    @api.model
+    def _get_events_by_api_id(self, season=None):
+        """``{FPL event id: record}`` of a season (the current one by default).
+
+        FPL re-uses the ids 1..38 every season, so lookups must be scoped.
+        """
+        season = season or self._get_current_season()
+        return {event.event_id: event for event in self.search([('season', '=', season)])}

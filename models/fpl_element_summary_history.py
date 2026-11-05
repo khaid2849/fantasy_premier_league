@@ -1,11 +1,28 @@
-from odoo import models, fields, api
+from markupsafe import Markup
+
+from odoo import api, fields, models
+
+RESULT_BADGE = Markup(
+    '<span style="color: #fff; border-radius: 10px; padding: 2px 5px; background-color: %s; '
+    'font-size: 7px; font-weight: bold;">%s</span>'
+)
+RESULT_COLORS = {'W': '#008000', 'L': '#ff0000', 'D': '#808080'}
+
+
+def _opponent_html(team, home_away, font_size, suffix=''):
+    return Markup(
+        '<img src="%s" style="width: 20px; height: 20px; border-radius: 10px;"/> '
+        '<span style="font-size: %spx;">%s (%s)</span> %s'
+    ) % (team._logo_url(), font_size, team.short_name or '', home_away, suffix)
+
 
 class FPLElementSummaryHistory(models.Model):
     _name = 'fpl.element.summary.history'
     _description = 'FPL Element Summary History'
+    _order = 'round desc, kickoff_time desc'
 
-    element_id = fields.Many2one('fpl.elements', string='Element')
-    fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Fixture')
+    element_id = fields.Many2one('fpl.elements', string='Element', required=True, index=True, ondelete='cascade')
+    fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Fixture', index=True, ondelete='cascade')
     opponent_team = fields.Many2one('fpl.teams', string='Opponent Team')
     total_points = fields.Float(string='Total Points')
     was_home = fields.Boolean(string='Was Home')
@@ -40,54 +57,44 @@ class FPLElementSummaryHistory(models.Model):
     expected_assists = fields.Float(string='Expected Assists')
     expected_goal_involvements = fields.Float(string='Expected Goal Involvements')
     expected_goals_conceded = fields.Float(string='Expected Goals Conceded')
-    value = fields.Integer(string='Value')
+    value = fields.Float(string='Value')
     transfers_balance = fields.Integer(string='Transfers Balance')
     selected = fields.Integer(string='Selected')
     transfers_in = fields.Float(string='Transfers In')
     transfers_out = fields.Float(string='Transfers Out')
     currency_id = fields.Many2one('res.currency')
-    opponent_team_display = fields.Html(string='Opponent', compute='_compute_opponent_team_display')
+    opponent_team_display = fields.Html(string='Opponent', compute='_compute_opponent_team_display', sanitize=False)
 
-    @api.depends('opponent_team')
+    _sql_constraints = [
+        ('element_fixture_uniq', 'unique(element_id, fixture_id)',
+         'A player can only have one history line per fixture.'),
+    ]
+
+    def _get_summary_key(self):
+        return self.fixture_id.id
+
+    @api.depends('opponent_team', 'was_home', 'team_h_score', 'team_a_score')
     def _compute_opponent_team_display(self):
         for rec in self:
-            team_a = rec.fixture_id.team_a
-            team_h = rec.fixture_id.team_h
-            home_away = 'H' if rec.was_home else 'A'
-            result = ''
-            win = '<span style="color: #fff; border-radius: 10px; padding: 2px 5px; background-color: #008000; font-size: 7px; font-weight: bold;">W</span>'
-            lose = '<span style="color: #fff; border-radius: 10px; padding: 2px 5px; background-color: #ff0000; font-size: 7px; font-weight: bold;">L</span>'
-            draw = '<span style="color: #fff; border-radius: 10px; padding: 2px 5px; background-color: #808080; font-size: 7px; font-weight: bold;">D</span>'
-            if rec.element_id.fpl_team_id == team_h:
-                if rec.team_h_score > rec.team_a_score:
-                    result = win
-                elif rec.team_h_score < rec.team_a_score:
-                    result = lose
-                else:
-                    result = draw
-            elif rec.element_id.fpl_team_id == team_a: 
-                if rec.team_a_score > rec.team_h_score:
-                    result = win
-                elif rec.team_a_score < rec.team_h_score:
-                    result = lose
-                else:
-                    result = draw
             if not rec.opponent_team:
                 rec.opponent_team_display = False
                 continue
-            opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.opponent_team.code}.svg'
-            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 9px;">{rec.opponent_team.short_name} ({home_away})</span> {result}'
-    
+            own, other = (rec.team_h_score, rec.team_a_score) if rec.was_home else (rec.team_a_score, rec.team_h_score)
+            result = 'W' if own > other else ('L' if own < other else 'D')
+            badge = RESULT_BADGE % (RESULT_COLORS[result], result)
+            rec.opponent_team_display = _opponent_html(rec.opponent_team, 'H' if rec.was_home else 'A', 9, badge)
+
 
 class FPLElementSummaryHistoryPast(models.Model):
     _name = 'fpl.element.summary.history.past'
     _description = 'FPL Element Summary History Past'
+    _order = 'season_name desc'
 
-    element_id = fields.Many2one('fpl.elements', string='Element')
+    element_id = fields.Many2one('fpl.elements', string='Element', required=True, index=True, ondelete='cascade')
     element_code = fields.Integer(string='Element Code')
     season_name = fields.Char(string='Season Name')
-    start_cost = fields.Integer(string='Start Cost')
-    end_cost = fields.Integer(string='End Cost')
+    start_cost = fields.Float(string='Start Cost')
+    end_cost = fields.Float(string='End Cost')
     total_points = fields.Integer(string='Total Points')
     minutes = fields.Integer(string='Minutes')
     goals_scored = fields.Integer(string='Goals Scored')
@@ -107,7 +114,7 @@ class FPLElementSummaryHistoryPast(models.Model):
     threat = fields.Float(string='Threat')
     ict_index = fields.Float(string='ICT Index')
     clearances_blocks_interceptions = fields.Integer(string='Clearances Blocks Interceptions')
-    recoveries= fields.Integer(string='Recoveries')
+    recoveries = fields.Integer(string='Recoveries')
     tackles = fields.Integer(string='Tackles')
     defensive_contribution = fields.Integer(string='Defensive Contribution')
     starts = fields.Integer(string='Starts')
@@ -117,12 +124,22 @@ class FPLElementSummaryHistoryPast(models.Model):
     expected_goals_conceded = fields.Float(string='Expected Goals Conceded')
     currency_id = fields.Many2one('res.currency')
 
+    _sql_constraints = [
+        ('element_season_uniq', 'unique(element_id, season_name)',
+         'A player can only have one line per past season.'),
+    ]
+
+    def _get_summary_key(self):
+        return self.season_name
+
+
 class FplElementSummaryFixture(models.Model):
     _name = 'fpl.element.summary.fixture'
     _description = 'FPL Element Summary Fixture'
+    _order = 'kickoff_time, id'
 
-    element_id = fields.Many2one('fpl.elements')
-    fixture_id = fields.Many2one('fpl.gameweek.fixtures')
+    element_id = fields.Many2one('fpl.elements', required=True, index=True, ondelete='cascade')
+    fixture_id = fields.Many2one('fpl.gameweek.fixtures', index=True, ondelete='cascade')
     code = fields.Integer(string='Code')
     team_h = fields.Many2one('fpl.teams')
     team_h_score = fields.Integer()
@@ -138,18 +155,18 @@ class FplElementSummaryFixture(models.Model):
     difficulty = fields.Integer()
     event_name = fields.Char(string='Event Name')
     gameweek = fields.Integer(string='Gameweek', related='fixture_id.gameweek')
-    opponent_team_display = fields.Html(string='Opponent', compute='_compute_opponent_team_display')
+    opponent_team_display = fields.Html(string='Opponent', compute='_compute_opponent_team_display', sanitize=False)
 
-    @api.depends('fixture_id.team_h', 'fixture_id.team_a')
+    _sql_constraints = [
+        ('element_fixture_uniq', 'unique(element_id, fixture_id)',
+         'A player can only have one line per upcoming fixture.'),
+    ]
+
+    def _get_summary_key(self):
+        return self.fixture_id.id
+
+    @api.depends('is_home', 'team_h', 'team_a')
     def _compute_opponent_team_display(self):
         for rec in self:
-            team_a = rec.fixture_id.team_a
-            team_h = rec.fixture_id.team_h
-            home_away = 'H' if rec.is_home else 'A'
-            opponent_team = team_h if rec.element_id.fpl_team_id != team_h else team_a
-
-            if not opponent_team:
-                rec.opponent_team_display = False
-                continue
-            opponent_team_photo_src = f'/fantasy_premier_league/static/src/img/teams_logo/{opponent_team.code}.svg'
-            rec.opponent_team_display = f'<img src="{opponent_team_photo_src}" style="width: 18x; height: 20px; border-radius: 10px;"/> <span style="font-size: 10px;">{opponent_team.short_name} ({home_away})</span>'
+            opponent = rec.team_a if rec.is_home else rec.team_h
+            rec.opponent_team_display = _opponent_html(opponent, 'H' if rec.is_home else 'A', 10) if opponent else False

@@ -1,27 +1,55 @@
 import logging
 import time
+from collections import Counter, defaultdict
+from datetime import timedelta
 
-from odoo import models, fields, api
-from odoo.exceptions import UserError
-from .fpl_api_mixin import FPLApiMixin
-from ..services.fpl_api_client import FPLApiException
-from markupsafe import Markup
-from datetime import datetime
 import pytz
+from markupsafe import Markup, escape
+
+from odoo import _, api, fields, models
+
+from .fpl_fixture_stat import FIXTURE_STAT_KEYS
 
 _logger = logging.getLogger(__name__)
 
-class FplGameweekFixures(models.Model, FPLApiMixin):
+LIVE_CHANNEL = 'fantasy_premier_league.fixtures_live'
+LIVE_NOTIFICATION = 'fpl.fixtures/update'
+# When nothing is being played, the whole season's fixtures are refreshed at
+# most this often (rescheduled kick-off times, postponed matches...)
+FULL_REFRESH_INTERVAL = timedelta(minutes=30)
+FULL_REFRESH_PARAM = 'fantasy_premier_league.fixtures_last_full_refresh'
+
+# (identifier, message) of the live events announced in Discuss
+LIVE_STAT_EVENTS = [
+    ('red_cards', "🟥 RED CARD! %(team)s player sent off!"),
+    ('own_goals', "⚽ OWN GOAL! %(team)s scored an own goal!"),
+    ('penalties_saved', "🥅 PENALTY SAVED! %(team)s goalkeeper made a penalty save!"),
+    ('penalties_missed', "❌ PENALTY MISSED! %(team)s player missed a penalty!"),
+]
+
+
+def _stat_o2m(side, identifier, string):
+    return fields.One2many(
+        'fpl.fixture.stat', 'fixture_id', string=string, readonly=True,
+        domain=[('side', '=', side), ('identifier', '=', identifier)],
+    )
+
+
+class FplGameweekFixtures(models.Model):
     _name = 'fpl.gameweek.fixtures'
+    _inherit = ['fpl.api.mixin']
     _description = 'FPL Gameweek Fixtures'
+    _order = 'kickoff_time, id'
 
     gameweek = fields.Integer(string='Gameweek')
-    code = fields.Char(string='Code')
-    event_id = fields.Many2one('fpl.events', string='Gameweek', index=True, group_expand='_read_group_event_ids', readonly=True)
-    season = fields.Char(string='Season', related='event_id.season', store=True, index=True)
+    # Unique fixture identifier across seasons (gw_fixture_id is 1..380 every season)
+    code = fields.Char(string='Code', index=True)
+    event_id = fields.Many2one('fpl.events', string='Gameweek', index=True, group_expand='_read_group_event_ids',
+                               readonly=True)
+    season = fields.Char(string='Season', index=True)
     finished = fields.Boolean(string='Finished')
     finished_provisional = fields.Boolean(string='Finished provisional')
-    gw_fixture_id = fields.Integer(string='Gameweek ID')
+    gw_fixture_id = fields.Integer(string='Gameweek ID', index=True)
     kickoff_time = fields.Datetime(string='Kickoff Time')
     minutes = fields.Integer(string='Minutes')
     provisional_start_time = fields.Boolean(string='Provisional start time')
@@ -30,66 +58,81 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
     team_h = fields.Many2one('fpl.teams', string='Home team')
     team_a_code = fields.Char()
     team_h_code = fields.Char()
-    team_a_photo = fields.Image()
-    team_h_photo = fields.Image()
+    # Not stored: the badge already lives on fpl.teams, copying it on all 380
+    # fixtures only duplicated attachments
+    team_a_photo = fields.Image(related='team_a.photo')
+    team_h_photo = fields.Image(related='team_h.photo')
     team_a_score = fields.Integer(string='Away Team Score')
     team_h_score = fields.Integer(string='Home Team Score')
     team_a_difficulty = fields.Integer(string='Away Team Difficulty')
     team_h_difficulty = fields.Integer(string='Home Team Difficulty')
     pulse_id = fields.Integer(string='Pulse id', index=True)
 
-    team_a_goals_scored_ids = fields.One2many('fpl.team.a.goals.scored', 'gw_fixture_id', string='Away Team Goals Scored')
-    team_a_assists_ids = fields.One2many('fpl.team.a.assists', 'gw_fixture_id', string='Away Team Assists')
-    team_a_own_goals_ids = fields.One2many('fpl.team.a.own.goals', 'gw_fixture_id', string='Away Team Own Goals')
-    team_a_penalties_saved_ids = fields.One2many('fpl.team.a.penalties.saved', 'gw_fixture_id', string='Away Team Penalties Saved')
-    team_a_penalties_missed_ids = fields.One2many('fpl.team.a.penalties.missed.scored', 'gw_fixture_id', string='Away Team Penalties Missed')
-    team_a_yellow_cards_ids = fields.One2many('fpl.team.a.yellow.cards', 'gw_fixture_id', string='Away Team Yellow Cards')
-    team_a_red_cards_ids = fields.One2many('fpl.team.a.red.cards', 'gw_fixture_id', string='Away Team Red Cards')
-    team_a_saves_ids = fields.One2many('fpl.team.a.goals.saved', 'gw_fixture_id', string='Away Team Saves')
-    team_a_bonus_ids = fields.One2many('fpl.team.a.bonus', 'gw_fixture_id', string='Away Team Bonus')
-    team_a_bps_ids = fields.One2many('fpl.team.a.bps', 'gw_fixture_id', string='Away Team Bonus Points System')
-    team_a_defensive_contribution_ids = fields.One2many('fpl.team.a.defensive.contribution', 'gw_fixture_id', string='Away Team Defensive Contribution')
+    stat_ids = fields.One2many('fpl.fixture.stat', 'fixture_id', string='Player Stats', readonly=True)
+    team_a_goals_scored_ids = _stat_o2m('a', 'goals_scored', 'Away Team Goals Scored')
+    team_a_assists_ids = _stat_o2m('a', 'assists', 'Away Team Assists')
+    team_a_own_goals_ids = _stat_o2m('a', 'own_goals', 'Away Team Own Goals')
+    team_a_penalties_saved_ids = _stat_o2m('a', 'penalties_saved', 'Away Team Penalties Saved')
+    team_a_penalties_missed_ids = _stat_o2m('a', 'penalties_missed', 'Away Team Penalties Missed')
+    team_a_yellow_cards_ids = _stat_o2m('a', 'yellow_cards', 'Away Team Yellow Cards')
+    team_a_red_cards_ids = _stat_o2m('a', 'red_cards', 'Away Team Red Cards')
+    team_a_saves_ids = _stat_o2m('a', 'saves', 'Away Team Saves')
+    team_a_bonus_ids = _stat_o2m('a', 'bonus', 'Away Team Bonus')
+    team_a_bps_ids = _stat_o2m('a', 'bps', 'Away Team Bonus Points System')
+    team_a_defensive_contribution_ids = _stat_o2m('a', 'defensive_contribution', 'Away Team Defensive Contribution')
 
-    team_h_goals_scored_ids = fields.One2many('fpl.team.h.goals.scored', 'gw_fixture_id', string='Home Team Goals Scored')
-    team_h_assists_ids = fields.One2many('fpl.team.h.assists', 'gw_fixture_id', string='Home Team Assists')
-    team_h_own_goals_ids = fields.One2many('fpl.team.h.own.goals', 'gw_fixture_id', string='Home Team Own Goals')
-    team_h_penalties_saved_ids = fields.One2many('fpl.team.h.penalties.saved', 'gw_fixture_id', string='Home Team Penalties Saved')
-    team_h_penalties_missed_ids = fields.One2many('fpl.team.h.penalties.missed.scored', 'gw_fixture_id', string='Home Team Penalties Missed')
-    team_h_yellow_cards_ids = fields.One2many('fpl.team.h.yellow.cards', 'gw_fixture_id', string='Home Team Yellow Cards')
-    team_h_red_cards_ids = fields.One2many('fpl.team.h.red.cards', 'gw_fixture_id', string='Home Team Red Cards')
-    team_h_saves_ids = fields.One2many('fpl.team.h.goals.saved', 'gw_fixture_id', string='Home Team Saves')
-    team_h_bonus_ids = fields.One2many('fpl.team.h.bonus', 'gw_fixture_id', string='Home Team Bonus')
-    team_h_bps_ids = fields.One2many('fpl.team.h.bps', 'gw_fixture_id', string='Home Team Bonus Points System')
-    team_h_defensive_contribution_ids = fields.One2many('fpl.team.h.defensive.contribution', 'gw_fixture_id', string='Home Team Defensive Contribution')
-    current_season = fields.Char(string='Current Season', compute='_compute_current_season')
-    match_result_display = fields.Html(string='Match Result', compute='_compute_match_result_display')
+    team_h_goals_scored_ids = _stat_o2m('h', 'goals_scored', 'Home Team Goals Scored')
+    team_h_assists_ids = _stat_o2m('h', 'assists', 'Home Team Assists')
+    team_h_own_goals_ids = _stat_o2m('h', 'own_goals', 'Home Team Own Goals')
+    team_h_penalties_saved_ids = _stat_o2m('h', 'penalties_saved', 'Home Team Penalties Saved')
+    team_h_penalties_missed_ids = _stat_o2m('h', 'penalties_missed', 'Home Team Penalties Missed')
+    team_h_yellow_cards_ids = _stat_o2m('h', 'yellow_cards', 'Home Team Yellow Cards')
+    team_h_red_cards_ids = _stat_o2m('h', 'red_cards', 'Home Team Red Cards')
+    team_h_saves_ids = _stat_o2m('h', 'saves', 'Home Team Saves')
+    team_h_bonus_ids = _stat_o2m('h', 'bonus', 'Home Team Bonus')
+    team_h_bps_ids = _stat_o2m('h', 'bps', 'Home Team Bonus Points System')
+    team_h_defensive_contribution_ids = _stat_o2m('h', 'defensive_contribution', 'Home Team Defensive Contribution')
 
-    @api.depends()
-    def _compute_match_result_display(self):
-        user_tz = pytz.timezone(self.env.user.tz or 'UTC')
-        for rec in self:
-            team_h_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_h.code}.svg'
-            team_a_src = f'/fantasy_premier_league/static/src/img/teams_logo/{rec.team_a.code}.svg'
-            if rec.finished_provisional or rec.started:
-                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{team_h_src}' style='width: 20px;border-radius: 10px;'/> <strong>{rec.team_h_score} - {rec.team_a_score}</strong> <img src='{team_a_src}' style='width: 20px;border-radius: 10px;'/> <strong>{rec.team_a.name}</strong>"
-            else:
-                local_kickoff = pytz.utc.localize(rec.kickoff_time).astimezone(user_tz)
-                rec.match_result_display = f"<strong>{rec.team_h.name}</strong> <img src='{team_h_src}' style='width: 20px;border-radius: 10px;'/> <span style='font-weight: bold; color: #34495E;'>{local_kickoff.strftime('%H:%M')}</span> <strong>{rec.team_a.name}</strong> <img src='{team_a_src}' style='width: 20px;border-radius: 10px;'/>"
+    is_current_season = fields.Boolean(compute='_compute_is_current_season', search='_search_is_current_season')
+    match_result_display = fields.Html(string='Match Result', compute='_compute_match_result_display',
+                                       sanitize=False)
 
+    @api.depends('gameweek', 'team_h.name', 'team_a.name')
     def _compute_display_name(self):
         for rec in self:
-            rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name} vs {rec.team_a.name}'
- 
-    @api.depends()
-    def _compute_current_season(self):
-        events_model = self.env['fpl.events']
-        current_event = events_model.search([('is_current', '=', True)], limit=1)
-        if not current_event:
-            # Off-season / before the first deadline of the new season: fall
-            # back to the most recent known event.
-            current_event = events_model.search([], order='deadline_time desc', limit=1)
+            rec.display_name = f'GW {rec.gameweek}: {rec.team_h.name or "?"} vs {rec.team_a.name or "?"}'
+
+    @api.depends('season')
+    def _compute_is_current_season(self):
+        current_season = self.env['fpl.events']._get_current_season()
         for rec in self:
-            rec.current_season = current_event.season
+            rec.is_current_season = bool(current_season) and rec.season == current_season
+
+    def _search_is_current_season(self, operator, value):
+        if operator not in ('=', '!='):
+            raise NotImplementedError(_("Unsupported search on 'is current season'."))
+        positive = (operator == '=') == bool(value)
+        return [('season', '=' if positive else '!=', self.env['fpl.events']._get_current_season())]
+
+    @api.depends('started', 'finished_provisional', 'kickoff_time', 'team_h_score', 'team_a_score',
+                 'team_h.name', 'team_a.name', 'team_h.photo_checksum', 'team_a.photo_checksum')
+    @api.depends_context('tz')
+    def _compute_match_result_display(self):
+        user_tz = pytz.timezone(self.env.context.get('tz') or self.env.user.tz or 'UTC')
+        logo = Markup("<img src='%s' style='width: 20px; border-radius: 10px;'/>")
+        for rec in self:
+            logo_h = logo % rec.team_h._logo_url() if rec.team_h else ''
+            logo_a = logo % rec.team_a._logo_url() if rec.team_a else ''
+            team_h = Markup('<strong>%s</strong> ') % (rec.team_h.name or '') + logo_h
+            team_a = logo_a + Markup(' <strong>%s</strong>') % (rec.team_a.name or '')
+            if rec.finished_provisional or rec.started:
+                middle = Markup(' <strong>%s - %s</strong> ') % (rec.team_h_score, rec.team_a_score)
+            elif rec.kickoff_time:
+                kickoff = pytz.utc.localize(rec.kickoff_time).astimezone(user_tz).strftime('%H:%M')
+                middle = Markup(" <span style='font-weight: bold; color: #34495E;'>%s</span> ") % kickoff
+            else:
+                middle = Markup(" <span class='text-muted'>%s</span> ") % _("TBC")
+            rec.match_result_display = team_h + middle + team_a
 
     @api.model
     def _read_group_event_ids(self, events, domain):
@@ -97,59 +140,57 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         # fpl.events 'fold' flag (__fold) to the kanban view
         return events.sorted(lambda e: (e.season or '', e.event_id))
 
+    @api.model
+    def _get_fixtures_by_api_id(self, season=None):
+        """``{FPL fixture id: record}`` of a season (the current one by default)."""
+        season = season or self.env['fpl.events']._get_current_season()
+        return {fixture.gw_fixture_id: fixture for fixture in self.search([('season', '=', season)])}
+
+    # ------------------------------------------------------------------
+    # Sync
+    # ------------------------------------------------------------------
+
+    @api.model
     def cron_get_data_gameweek_fixutres(self, get_all=False, manual_gameweek=None, send_live_notifications=True,
-                                         live_poll_interval=15, live_poll_budget=50):
+                                        live_poll_interval=15, live_poll_budget=50):
         """Sync gameweek fixtures from the FPL API.
 
-        ``ir.cron`` has no sub-minute interval (the field only accepts
-        minutes/hours/days/..., and the cron dispatcher itself only wakes up
-        about once a minute), so this can't come from the cron interval
-        alone. Instead, when this runs as the scheduled live-tracking job (no
-        ``manual_gameweek``/``get_all``), it loops internally every
-        ``live_poll_interval`` seconds - committing after each pass so the
-        kanban bus push lands right away - for up to ``live_poll_budget``
-        seconds. If a match is still live once that budget runs out, it
-        re-queues itself to run again immediately via ``ir.cron``'s own
-        trigger mechanism (see ``_trigger()`` in ``ir_cron.py``) rather than
-        waiting for the next scheduled minute. Once nothing is live, it stops
-        self-triggering and the normal 1-minute schedule takes back over as
-        the "is anything live yet" check.
+        ``ir.cron`` has no sub-minute interval, so when this runs as the
+        scheduled live-tracking job (no ``manual_gameweek``/``get_all``) it
+        loops internally every ``live_poll_interval`` seconds - committing
+        after each pass so the kanban bus push lands right away - for up to
+        ``live_poll_budget`` seconds. If a match is still live once that
+        budget runs out, it re-queues itself to run again immediately via
+        ``ir.cron``'s trigger mechanism rather than waiting for the next
+        scheduled minute.
 
-        ``live_poll_interval`` defaults to 15s rather than 1-2s: FPL's own
-        backend (fed from Opta) only refreshes its live data internally
-        roughly once every ~60s, so polling faster than that re-fetches and
-        re-processes byte-identical data most of the time for no real
-        freshness gain, while multiplying the DB write load from
-        ``_process_fixture_stats`` for nothing. 15s was picked as a floor
-        that's still meaningfully tighter than the 1-minute baseline without
-        being wasteful against a source that doesn't update that often.
+        When nothing is being played, the API is not called at all, except
+        for a full season refresh every ``FULL_REFRESH_INTERVAL`` (kick-off
+        time changes, postponements...).
+
+        ``live_poll_interval`` defaults to 15s: FPL's own backend only
+        refreshes its live data roughly once a minute, polling faster just
+        re-processes identical data.
         """
-        # ir.cron acquires this job's row with a row lock (see
-        # `_acquire_one_job` in ir_cron.py) that isn't released until the
-        # transaction commits. Committing immediately, before any real work,
-        # releases it right away instead of holding it for however long the
-        # sync takes - otherwise, while a match is live and this job is
-        # effectively running continuously, any concurrent write to this
-        # exact cron record (e.g. a module upgrade reloading ir_cron.xml)
-        # can hit ir.cron's own `_try_lock()` NOWAIT check and fail outright
-        # with "This cron task is currently being executed".
+        # ir.cron holds a row lock on this job until the transaction commits:
+        # release it right away instead of for the whole live loop.
         self.env.cr.commit()
 
         if manual_gameweek or get_all:
-            gameweeks = [manual_gameweek] if manual_gameweek else range(1, 39)
-            self._poll_fixtures_once(gameweeks, get_all, send_live_notifications)
+            self._poll_fixtures_once(None if get_all else [manual_gameweek], include_finished=True,
+                                     send_live_notifications=send_live_notifications)
+            return
+
+        if not self._needs_live_polling():
+            self._full_refresh_if_due()
             return
 
         deadline = time.monotonic() + live_poll_budget
-        live_now = False
         while True:
-            gameweeks = self._get_live_polling_gameweeks()
-            self._poll_fixtures_once(gameweeks, get_all=False, send_live_notifications=send_live_notifications)
+            self._poll_fixtures_once(self._get_live_polling_gameweeks(),
+                                     send_live_notifications=send_live_notifications)
             self.env.cr.commit()
-
-            live_now = bool(self.search_count([
-                ('started', '=', True), ('finished_provisional', '=', False),
-            ]))
+            live_now = self._needs_live_polling(strict=True)
             if not live_now or time.monotonic() >= deadline:
                 break
             time.sleep(live_poll_interval)
@@ -157,296 +198,272 @@ class FplGameweekFixures(models.Model, FPLApiMixin):
         if live_now:
             self.env.ref('fantasy_premier_league.ir_cron_get_gameweek_fixtures')._trigger()
 
-    def _poll_fixtures_once(self, gameweeks, get_all, send_live_notifications):
-        """Single fetch-and-process pass over the given gameweeks."""
-        changed_fixtures = self.browse()
-        try:
-            for gameweek in gameweeks:
-                gameweek_fixtures = self.sync_from_fpl_api('get_gameweek_fixtures', gameweek)
-                if not gameweek_fixtures:
-                    continue
+    @api.model
+    def _needs_live_polling(self, strict=False):
+        """True when a match is being played, or has been played but its
+        data is not final yet (bonus points are confirmed later on).
 
-                for fixture_data in gameweek_fixtures:
-                    fixture_id = fixture_data.get('id')
-                    exist_fixture = self.search([('gw_fixture_id', '=', fixture_id)])
-
-                    if exist_fixture and exist_fixture.finished and not get_all:
-                        continue
-
-                    old_data = self._get_fixture_snapshot(exist_fixture) if exist_fixture else {}
-
-                    fixture_vals = self._update_gameweek_val(fixture_data)
-                    fixture_vals.update({'gameweek': gameweek})
-
-                    if exist_fixture:
-                        exist_fixture.write(fixture_vals)
-                    else:
-                        new_fixture = self.create(fixture_vals)
-                        exist_fixture = new_fixture
-
-                    if not old_data or self._get_fixture_snapshot(exist_fixture) != old_data:
-                        changed_fixtures |= exist_fixture
-
-                    if fixture_data.get('stats'):
-                        old_stats = self._get_stats_snapshot(exist_fixture.id) if old_data else {}
-                        self._process_fixture_stats(fixture_data.get('stats'), exist_fixture.id)
-
-                        if exist_fixture.started and not exist_fixture.finished:
-                            if send_live_notifications:
-                                self._check_and_notify_live_updates(exist_fixture, old_data, old_stats)
-
-            if changed_fixtures:
-                self._notify_kanban_refresh(changed_fixtures)
-
-        except FPLApiException as e:
-            _logger.error(f"FPL API error during gameweek fixtures sync: {str(e)}")
-            raise UserError(f"FPL API error during gameweek fixtures sync: {str(e)}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
-
-        return changed_fixtures
-    
-    def _update_gameweek_val(self, data):
-        event_id = self.env['fpl.events'].search([('event_id', '=', data.get('event'))], limit=1)
-        team_h_id = self.env['fpl.teams'].search([('team_id', '=', data.get('team_h'))], limit=1)
-        team_a_id = self.env['fpl.teams'].search([('team_id', '=', data.get('team_a'))], limit=1)
-        
-        val = {
-            'code': data.get('code'),
-            'event_id': event_id.id if event_id else False,
-            'finished': data.get('finished'),
-            'finished_provisional': data.get('finished_provisional'),
-            'gw_fixture_id': data.get('id'),
-            'kickoff_time': datetime.fromisoformat(data.get('kickoff_time').replace('Z', '')),
-            'minutes': data.get('minutes'),
-            'provisional_start_time': data.get('provisional_start_time'),
-            'started': data.get('started'),
-            'team_a': team_a_id.id if team_a_id else False,
-            'team_a_score': data.get('team_a_score'),
-            'team_a_code': team_a_id.code,
-            'team_h': team_h_id.id if team_h_id else False,
-            'team_h_code': team_h_id.code,
-            'team_h_score': data.get('team_h_score'),
-            'team_h_difficulty': data.get('team_h_difficulty'),
-            'team_a_difficulty': data.get('team_a_difficulty'),
-            'pulse_id': data.get('pulse_id'),
-            'team_a_photo': team_a_id.photo,
-            'team_h_photo': team_h_id.photo,
-        }
-        return val
-    
-    def _process_fixture_stats(self, stats_data, fixture_id):
-        """Process stats data for a fixture"""
-        stat_model_mapping = {
-            'goals_scored': {
-                'away': 'fpl.team.a.goals.scored',
-                'home': 'fpl.team.h.goals.scored'
-            },
-            'assists': {
-                'away': 'fpl.team.a.assists', 
-                'home': 'fpl.team.h.assists'
-            },
-            'own_goals': {
-                'away': 'fpl.team.a.own.goals',
-                'home': 'fpl.team.h.own.goals'
-            },
-            'penalties_saved': {
-                'away': 'fpl.team.a.penalties.saved',
-                'home': 'fpl.team.h.penalties.saved'
-            },
-            'penalties_missed': {
-                'away': 'fpl.team.a.penalties.missed.scored',
-                'home': 'fpl.team.h.penalties.missed.scored'
-            },
-            'yellow_cards': {
-                'away': 'fpl.team.a.yellow.cards',
-                'home': 'fpl.team.h.yellow.cards'
-            },
-            'red_cards': {
-                'away': 'fpl.team.a.red.cards',
-                'home': 'fpl.team.h.red.cards'
-            },
-            'saves': {
-                'away': 'fpl.team.a.goals.saved',
-                'home': 'fpl.team.h.goals.saved'
-            },
-            'bonus': {
-                'away': 'fpl.team.a.bonus',
-                'home': 'fpl.team.h.bonus'
-            },
-            'bps': {
-                'away': 'fpl.team.a.bps',
-                'home': 'fpl.team.h.bps'
-            },
-            'defensive_contribution': {
-                'away': 'fpl.team.a.defensive.contribution',
-                'home': 'fpl.team.h.defensive.contribution'
-            }
-        }
-        
-        for stat_group in stats_data:
-            identifier = stat_group.get('identifier')
-            if identifier not in stat_model_mapping:
-                continue
-            
-
-            for team_type in ['a', 'h']:
-                team_key = 'away' if team_type == 'a' else 'home'
-                model_name = stat_model_mapping[identifier][team_key]
-                team_stats = stat_group.get(team_type, [])
-
-                # During a live match this runs every few seconds, but the
-                # underlying stat rarely changes between polls - skip the
-                # delete+recreate entirely when the incoming values already
-                # match what's stored, instead of rewriting unconditionally.
-                new_values = {ps.get('element'): ps.get('value') for ps in team_stats}
-                existing = self.env[model_name].search([('gw_fixture_id', '=', fixture_id)])
-                existing_values = {rec.element_id.element_id: rec.value for rec in existing}
-                if new_values == existing_values:
-                    continue
-
-                existing.unlink()
-                for player_stat in team_stats:
-                    element_id = player_stat.get('element')
-                    value = player_stat.get('value')
-
-                    player_record = self.env['fpl.elements'].search([('element_id', '=', element_id)], limit=1)
-
-                    self.env[model_name].create({
-                        'gw_fixture_id': fixture_id,
-                        'element_id': player_record.id if player_record else False,
-                        'value': value
-                    })
-
-    def _get_fixture_snapshot(self, fixture):
-        """Get snapshot of fixture data for change detection"""
-        if not fixture:
-            return {}
-        return {
-            'team_h_score': fixture.team_h_score,
-            'team_a_score': fixture.team_a_score,
-            'minutes': fixture.minutes,
-            'started': fixture.started,
-            'finished_provisional': fixture.finished_provisional,
-        }
-
-    def _get_live_polling_gameweeks(self):
-        """Gameweeks worth an FPL API call on this cron tick.
-
-        Limited to the current FPL event plus any gameweek we already know
-        has a fixture in progress (covers bonus points still settling just
-        after full time, near a gameweek boundary). Replaces sweeping all
-        38 gameweeks every minute regardless of what is actually live.
+        :param bool strict: only matches in progress (used to decide whether
+            to keep looping within the same cron run)
         """
-        events_model = self.env['fpl.events']
-        current_event = events_model.search([('is_current', '=', True)], limit=1)
+        if strict:
+            domain = [('started', '=', True), ('finished_provisional', '=', False)]
+        else:
+            domain = [('kickoff_time', '<=', fields.Datetime.now()), ('finished', '=', False)]
+        return bool(self.search_count(domain + [('is_current_season', '=', True)], limit=1))
 
+    @api.model
+    def _full_refresh_if_due(self):
+        ICP = self.env['ir.config_parameter'].sudo()
+        last_refresh = fields.Datetime.to_datetime(ICP.get_param(FULL_REFRESH_PARAM) or False)
+        now = fields.Datetime.now()
+        if last_refresh and now - last_refresh < FULL_REFRESH_INTERVAL:
+            return
+        Events = self.env['fpl.events']
+        if not Events.search_count([('season', '=', Events._get_current_season()), ('finished', '=', False)]):
+            # Off-season: the new season's fixtures re-use the event/team ids,
+            # so the events and teams must be synced first (the bootstrap cron
+            # only runs every 6 hours).
+            self.env['fpl.import.data'].cron_get_data_boostrap_static()
+        self._poll_fixtures_once(None, send_live_notifications=False)
+        ICP.set_param(FULL_REFRESH_PARAM, fields.Datetime.to_string(now))
+
+    @api.model
+    def _get_live_polling_gameweeks(self):
+        """Gameweeks worth an API call: the current one plus any gameweek that
+        still has a fixture in progress (bonus points settling just after
+        full time, near a gameweek boundary)."""
         gameweeks = set()
+        current_event = self.env['fpl.events'].search([('is_current', '=', True)], limit=1)
         if current_event:
             gameweeks.add(current_event.event_id)
-
-        in_progress = self.search([('started', '=', True), ('finished_provisional', '=', False)])
+        in_progress = self.search([
+            ('is_current_season', '=', True),
+            ('kickoff_time', '<=', fields.Datetime.now()),
+            ('finished', '=', False),
+        ])
         gameweeks.update(in_progress.mapped('gameweek'))
-
         return sorted(gw for gw in gameweeks if gw)
 
-    def _notify_kanban_refresh(self, fixtures):
-        """Ping the live-scoreboard kanban so open clients reload instead of
-        waiting on a manual refresh. Payload only carries the changed ids -
-        the client re-fetches through the normal view read.
+    @api.model
+    def _poll_fixtures_once(self, gameweeks, include_finished=False, send_live_notifications=True):
+        """Fetch and store the fixtures of ``gameweeks`` (``None``: whole season).
+
+        :return: the fixtures whose score/status changed
         """
-        self.env['bus.bus']._sendone(
-            'fantasy_premier_league.fixtures_live',
-            'fpl.fixtures/update',
-            {'fixture_ids': fixtures.ids},
-        )
+        if gameweeks is None:
+            calls = {'all': ('get_gameweek_fixtures', (None,))}
+        else:
+            calls = {gw: ('get_gameweek_fixtures', (gw,)) for gw in gameweeks}
+        results, errors = self._fpl_fetch_many(calls)
+        if errors and not results:
+            error = next(iter(errors.values()))
+            raise self._fpl_user_error(_("FPL API error during gameweek fixtures sync"), error) from error
+        for gameweek, error in errors.items():
+            _logger.warning("Fixtures of gameweek %s could not be fetched: %s", gameweek, error)
 
-    def _get_stats_snapshot(self, fixture_id):
-        """Get snapshot of stats data for change detection"""
-        stats_snapshot = {
-            'red_cards': {
-                'home': len(self.env['fpl.team.h.red.cards'].search([('gw_fixture_id', '=', fixture_id)])),
-                'away': len(self.env['fpl.team.a.red.cards'].search([('gw_fixture_id', '=', fixture_id)])),
-            },
-            'own_goals': {
-                'home': len(self.env['fpl.team.h.own.goals'].search([('gw_fixture_id', '=', fixture_id)])),
-                'away': len(self.env['fpl.team.a.own.goals'].search([('gw_fixture_id', '=', fixture_id)])),
-            },
-            'penalties_saved': {
-                'home': len(self.env['fpl.team.h.penalties.saved'].search([('gw_fixture_id', '=', fixture_id)])),
-                'away': len(self.env['fpl.team.a.penalties.saved'].search([('gw_fixture_id', '=', fixture_id)])),
-            },
-            'penalties_missed': {
-                'home': len(self.env['fpl.team.h.penalties.missed.scored'].search([('gw_fixture_id', '=', fixture_id)])),
-                'away': len(self.env['fpl.team.a.penalties.missed.scored'].search([('gw_fixture_id', '=', fixture_id)])),
-            },
+        fixtures_data = [fixture for result in results.values() for fixture in (result or [])]
+        return self._sync_fixtures(fixtures_data, include_finished=include_finished,
+                                   send_live_notifications=send_live_notifications)
+
+    @api.model
+    def _sync_fixtures(self, fixtures_data, include_finished=False, send_live_notifications=True):
+        Events = self.env['fpl.events']
+        season = Events._get_current_season()
+        events = Events._get_events_by_api_id(season)
+        teams = self.env['fpl.teams']._get_teams_by_api_id()
+        existing = {
+            fixture.code: fixture
+            for fixture in self.search([('code', 'in', [str(data['code']) for data in fixtures_data])])
         }
-        return stats_snapshot
 
-    def _check_and_notify_live_updates(self, fixture, old_data, old_stats):
+        vals_by_key, data_by_key, snapshots = {}, {}, {}
+        for data in fixtures_data:
+            key = str(data['code'])
+            fixture = existing.get(key)
+            # A finished fixture (bonus confirmed) never changes again
+            if fixture and fixture.finished and not include_finished:
+                continue
+            if fixture:
+                snapshots[key] = fixture._get_fixture_snapshot()
+            event = events.get(data.get('event'))
+            team_h = teams.get(data.get('team_h'))
+            team_a = teams.get(data.get('team_a'))
+            vals_by_key[key] = {
+                'code': key,
+                'gw_fixture_id': data.get('id'),
+                'gameweek': data.get('event') or 0,
+                'event_id': event.id if event else False,
+                'season': season,
+                'finished': bool(data.get('finished')),
+                'finished_provisional': bool(data.get('finished_provisional')),
+                'kickoff_time': self._fpl_parse_datetime(data.get('kickoff_time')),
+                'minutes': data.get('minutes'),
+                'provisional_start_time': bool(data.get('provisional_start_time')),
+                'started': bool(data.get('started')),
+                'team_h': team_h.id if team_h else False,
+                'team_h_code': team_h.code if team_h else False,
+                'team_a': team_a.id if team_a else False,
+                'team_a_code': team_a.code if team_a else False,
+                'team_h_score': data.get('team_h_score'),
+                'team_a_score': data.get('team_a_score'),
+                'team_h_difficulty': data.get('team_h_difficulty'),
+                'team_a_difficulty': data.get('team_a_difficulty'),
+                'pulse_id': data.get('pulse_id'),
+            }
+            data_by_key[key] = data
+
+        if not vals_by_key:
+            return self.browse()
+
+        fixtures = self._fpl_upsert(self, existing, vals_by_key)
+        changed = self.browse([
+            fixture.id for key, fixture in fixtures.items()
+            if key not in snapshots or fixture._get_fixture_snapshot() != snapshots[key]
+        ])
+        stat_changes = self._sync_fixture_stats(
+            {fixtures[key]: data_by_key[key].get('stats') or [] for key in fixtures}
+        )
+        changed |= self.browse([fixture.id for fixture in stat_changes])
+
+        if send_live_notifications:
+            for key, fixture in fixtures.items():
+                if key in snapshots and fixture.started and not fixture.finished:
+                    fixture._check_and_notify_live_updates(snapshots[key], stat_changes.get(fixture))
+        if changed:
+            self._notify_kanban_refresh(changed)
+        return changed
+
+    @api.model
+    def _sync_fixture_stats(self, stats_by_fixture):
+        """Store the player stats of several fixtures with one read and batched writes.
+
+        :param dict stats_by_fixture: ``{fixture record: API 'stats' list}``
+        :return: ``{fixture: (old Counter, new Counter)}`` of the fixtures whose
+            stats changed; counters are keyed by ``(identifier, side)``
+        """
+        Stat = self.env['fpl.fixture.stat']
+        element_ids = {
+            player_stat.get('element')
+            for stats in stats_by_fixture.values()
+            for group in stats if group.get('identifier') in FIXTURE_STAT_KEYS
+            for side in ('h', 'a')
+            for player_stat in group.get(side) or []
+        }
+        elements = {
+            element.element_id: element.id
+            for element in self.env['fpl.elements'].search([('element_id', 'in', list(element_ids))])
+        }
+
+        fixture_ids = [fixture.id for fixture in stats_by_fixture]
+        existing = {
+            (stat.fixture_id.id, stat.side, stat.identifier, stat.element_id.id): stat
+            for stat in Stat.search([('fixture_id', 'in', fixture_ids)])
+        }
+        old_counts = defaultdict(Counter)
+        for (fixture_id, side, identifier, _element_id), stat in existing.items():
+            old_counts[fixture_id][(identifier, side)] += stat.value
+
+        vals_by_key = {}
+        new_counts = defaultdict(Counter)
+        for fixture, stats in stats_by_fixture.items():
+            for group in stats:
+                identifier = group.get('identifier')
+                if identifier not in FIXTURE_STAT_KEYS:
+                    continue
+                for side in ('h', 'a'):
+                    for player_stat in group.get(side) or []:
+                        element_id = elements.get(player_stat.get('element'))
+                        if not element_id:
+                            continue
+                        value = player_stat.get('value') or 0
+                        vals_by_key[(fixture.id, side, identifier, element_id)] = {
+                            'fixture_id': fixture.id,
+                            'side': side,
+                            'identifier': identifier,
+                            'element_id': element_id,
+                            'value': value,
+                        }
+                        new_counts[fixture.id][(identifier, side)] += value
+
+        self._fpl_upsert(Stat, existing, vals_by_key, unlink_missing=True)
+        return {
+            fixture: (old_counts[fixture.id], new_counts[fixture.id])
+            for fixture in stats_by_fixture
+            if old_counts[fixture.id] != new_counts[fixture.id]
+        }
+
+    def _get_fixture_snapshot(self):
+        """Data whose change is pushed to the live scoreboard."""
+        self.ensure_one()
+        return (self.team_h_score, self.team_a_score, self.minutes, self.started, self.finished_provisional,
+                self.finished, self.kickoff_time)
+
+    @api.model
+    def _notify_kanban_refresh(self, fixtures):
+        """Ping the live-scoreboard kanban so open clients reload. The payload
+        only carries the changed ids - the client re-fetches through the
+        normal view read."""
+        self.env['bus.bus']._sendone(LIVE_CHANNEL, LIVE_NOTIFICATION, {'fixture_ids': fixtures.ids})
+
+    # ------------------------------------------------------------------
+    # Live notifications (Discuss)
+    # ------------------------------------------------------------------
+
+    def _check_and_notify_live_updates(self, old_snapshot, stat_change):
+        self.ensure_one()
         notifications = []
-        
-        if old_data:
-            if old_data.get('team_h_score', 0) != fixture.team_h_score:
-                if fixture.team_h_score > old_data.get('team_h_score', 0):
-                    notifications.append(f"⚽ GOAL! {fixture.team_h.name} scored! {fixture.team_h.name} {fixture.team_h_score} - {fixture.team_a_score} {fixture.team_a.name}")
-            
-            if old_data.get('team_a_score', 0) != fixture.team_a_score:
-                if fixture.team_a_score > old_data.get('team_a_score', 0):
-                    notifications.append(f"⚽ GOAL! {fixture.team_a.name} scored! {fixture.team_h.name} {fixture.team_h_score} - {fixture.team_a_score} {fixture.team_a.name}")
-        
-        if old_stats:
-            current_stats = self._get_stats_snapshot(fixture.id)
-            
-            if current_stats['red_cards']['home'] > old_stats.get('red_cards', {}).get('home', 0):
-                notifications.append(f"🟥 RED CARD! {fixture.team_h.name} player sent off!")
-            if current_stats['red_cards']['away'] > old_stats.get('red_cards', {}).get('away', 0):
-                notifications.append(f"🟥 RED CARD! {fixture.team_a.name} player sent off!")
-            
-            if current_stats['own_goals']['home'] > old_stats.get('own_goals', {}).get('home', 0):
-                notifications.append(f"⚽ OWN GOAL! {fixture.team_h.name} scored an own goal!")
-            if current_stats['own_goals']['away'] > old_stats.get('own_goals', {}).get('away', 0):
-                notifications.append(f"⚽ OWN GOAL! {fixture.team_a.name} scored an own goal!")
-            
-            if current_stats['penalties_saved']['home'] > old_stats.get('penalties_saved', {}).get('home', 0):
-                notifications.append(f"🥅 PENALTY SAVED! {fixture.team_h.name} goalkeeper made a penalty save!")
-            if current_stats['penalties_saved']['away'] > old_stats.get('penalties_saved', {}).get('away', 0):
-                notifications.append(f"🥅 PENALTY SAVED! {fixture.team_a.name} goalkeeper made a penalty save!")
-            
-            if current_stats['penalties_missed']['home'] > old_stats.get('penalties_missed', {}).get('home', 0):
-                notifications.append(f"❌ PENALTY MISSED! {fixture.team_h.name} player missed a penalty!")
-            if current_stats['penalties_missed']['away'] > old_stats.get('penalties_missed', {}).get('away', 0):
-                notifications.append(f"❌ PENALTY MISSED! {fixture.team_a.name} player missed a penalty!")
-        
-        if notifications:
-            self._send_live_notifications(fixture, notifications)
+        old_h_score, old_a_score = old_snapshot[0] or 0, old_snapshot[1] or 0
+        score = f"{self.team_h.name} {self.team_h_score} - {self.team_a_score} {self.team_a.name}"
+        if (self.team_h_score or 0) > old_h_score:
+            notifications.append(f"⚽ GOAL! {self.team_h.name} scored! {score}")
+        if (self.team_a_score or 0) > old_a_score:
+            notifications.append(f"⚽ GOAL! {self.team_a.name} scored! {score}")
 
-    def _send_live_notifications(self, fixture, notifications):
-        """Send live match notifications to all users using message_post"""
+        if stat_change:
+            old_counts, new_counts = stat_change
+            for identifier, message in LIVE_STAT_EVENTS:
+                for side, team in (('h', self.team_h), ('a', self.team_a)):
+                    if new_counts[(identifier, side)] > old_counts[(identifier, side)]:
+                        notifications.append(message % {'team': team.name})
+
+        if notifications:
+            self._send_live_notifications(notifications)
+
+    def _send_live_notifications(self, notifications):
+        """Post the live updates of this fixture in the "FPL Live" channel.
+
+        One message per update in a shared channel (users may leave or mute
+        it) rather than a private chat per user: the cost does not grow with
+        the number of users, and no bot user gets a DM it would answer.
+        """
+        self.ensure_one()
+        channel = self.env.ref('fantasy_premier_league.channel_fpl_live', raise_if_not_found=False)
+        if not channel:
+            _logger.info("FPL Live channel deleted: live notifications are disabled")
+            return
+        bot_partner = self.env.ref('fantasy_premier_league.fpl_bot_partner', raise_if_not_found=False)
+        match_info = f"GW{self.gameweek}: {self.team_h.name} vs {self.team_a.name} ({self.minutes}')"
+        body = Markup('<p><strong>🔴 LIVE MATCH UPDATE</strong></p><p><strong>%s</strong></p>') % match_info
+        body += Markup('').join(Markup('<p>%s</p>') % escape(notification) for notification in notifications)
         try:
-            odoobot_id = self.env['ir.model.data']._xmlid_to_res_id("fantasy_premier_league.fpl_bot_partner")
-            users = self.env['res.users'].search([('id', '!=', self.env.ref('fantasy_premier_league.fpl_user_root').id)])
-            
-            match_info = f"GW{fixture.gameweek}: {fixture.team_h.name} vs {fixture.team_a.name} ({fixture.minutes}')"
-            
-            for notification in notifications:
-                message_body = f"<p><strong>🔴 LIVE MATCH UPDATE</strong></p>"
-                message_body += f"<p><strong>{match_info}</strong></p>"
-                message_body += f"<p>{notification}</p>"
-                
-                for user in users:
-                    if user.partner_id:
-                        channel = self.env['discuss.channel'].channel_get([user.partner_id.id])
-                        channel.sudo().message_post(
-                            author_id=odoobot_id,
-                            body=Markup(message_body),
-                            subject=f"Fxiture Live Update: {fixture.team_h.name} vs {fixture.team_a.name}",
-                            message_type='comment',
-                            subtype_xmlid='mail.mt_comment'
-                        )
-                
-                _logger.info(f"Live notification sent: {notification}")
-                
-        except Exception as e:
-            _logger.error(f"Error sending live notifications: {str(e)}")
+            # A messaging failure must never roll back the fixture sync
+            with self.env.cr.savepoint():
+                channel.sudo().message_post(
+                    author_id=bot_partner.id if bot_partner else False,
+                    body=body,
+                    message_type='comment',
+                    subtype_xmlid='mail.mt_comment',
+                )
+            _logger.info("Live notification sent for %s: %s", match_info, notifications)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Could not post the live notification of %s", match_info)
+
+    @api.model
+    def _init_live_channel_members(self):
+        """Subscribe the internal users to the "FPL Live" channel (install/upgrade)."""
+        channel = self.env.ref('fantasy_premier_league.channel_fpl_live', raise_if_not_found=False)
+        if not channel:
+            return
+        users = self.env['res.users'].search([('share', '=', False)])
+        channel.sudo().add_members(partner_ids=users.partner_id.ids, post_joined_message=False)

@@ -1,19 +1,42 @@
-import logging
+from markupsafe import Markup
 
-from odoo import models, fields, api
-from odoo.exceptions import UserError
-from .fpl_api_mixin import FPLApiMixin
-from ..services.fpl_api_client import FPLApiException
+from odoo import api, fields, models
 
-_logger = logging.getLogger(__name__)
+from .fpl_phases import OVERALL_PHASE_ID
 
-class FPLLeagues(models.Model, FPLApiMixin):
+# FPL phase id -> (league field suffix, phase name); phase 1 is the overall standing
+MONTH_PHASES = {
+    2: 'august', 3: 'september', 4: 'october', 5: 'november', 6: 'december',
+    7: 'january', 8: 'february', 9: 'march', 10: 'april', 11: 'may',
+}
+
+
+def rank_form_html(rank, last_rank):
+    """Rank with an up/down/same arrow, as shown on the FPL website."""
+    if rank > last_rank:
+        icon, color = 'fa-arrow-circle-down', '#E60023'
+    elif rank < last_rank:
+        icon, color = 'fa-arrow-circle-up', '#34a853'
+    else:
+        icon, color = 'fa-circle', '#87668a'
+    return Markup('<p><i class="fa %s" style="color: %s"></i> %s</p>') % (icon, color, format(rank or 0, ','))
+
+
+def _standing_o2m(phase_id, string):
+    return fields.One2many(
+        'fpl.league.standings.results', 'league_id', string=string, readonly=True,
+        domain=[('phase_id.phase_id', '=', phase_id)],
+    )
+
+
+class FPLLeagues(models.Model):
     _name = 'fpl.leagues'
     _description = 'FPL Leagues'
+    _order = 'type, league_id'
 
     type = fields.Selection([('classic', 'Classic'), ('h2h', 'H2H')], string='League Type')
-    manager_id = fields.Many2one('fpl.manager.team', string='Manager ID')
-    league_id = fields.Integer(string='League ID')
+    manager_id = fields.Many2one('fpl.manager.team', string='Manager ID', index=True, ondelete='cascade')
+    league_id = fields.Integer(string='League ID', index=True)
     name = fields.Char(string='Name')
     short_name = fields.Char(string='Short Name')
     created = fields.Datetime(string='Created')
@@ -35,18 +58,18 @@ class FPLLeagues(models.Model, FPLApiMixin):
     entry_last_rank = fields.Integer(string='Entry Last Rank')
     active_phases_ids = fields.One2many('fpl.league.active.phases', 'league_id', string='Active Phases')
     overall_points = fields.Integer(string='Overall Points', compute='_compute_overall_points')
-    entry_rank_form = fields.Html(string='Current rank', compute='_compute_entry_rank_form')
-    standing_result_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='Overall')
-    standing_result_august_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='August')
-    standing_result_september_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='September')
-    standing_result_october_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='October')
-    standing_result_november_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='November')
-    standing_result_december_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='December')
-    standing_result_january_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='January')
-    standing_result_february_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='February')
-    standing_result_march_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='March')
-    standing_result_april_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='April')
-    standing_result_may_ids = fields.One2many('fpl.league.standings.results', 'league_id', string='May')
+    entry_rank_form = fields.Html(string='Current rank', compute='_compute_entry_rank_form', sanitize=False)
+    standing_result_ids = _standing_o2m(OVERALL_PHASE_ID, 'Overall')
+    standing_result_august_ids = _standing_o2m(2, 'August')
+    standing_result_september_ids = _standing_o2m(3, 'September')
+    standing_result_october_ids = _standing_o2m(4, 'October')
+    standing_result_november_ids = _standing_o2m(5, 'November')
+    standing_result_december_ids = _standing_o2m(6, 'December')
+    standing_result_january_ids = _standing_o2m(7, 'January')
+    standing_result_february_ids = _standing_o2m(8, 'February')
+    standing_result_march_ids = _standing_o2m(9, 'March')
+    standing_result_april_ids = _standing_o2m(10, 'April')
+    standing_result_may_ids = _standing_o2m(11, 'May')
     last_updated_data = fields.Datetime(string='Last updated')
 
     is_august = fields.Boolean(compute='_compute_league_standing_phase')
@@ -60,46 +83,24 @@ class FPLLeagues(models.Model, FPLApiMixin):
     is_april = fields.Boolean(compute='_compute_league_standing_phase')
     is_may = fields.Boolean(compute='_compute_league_standing_phase')
 
+    _sql_constraints = [
+        ('manager_league_uniq', 'unique(manager_id, type, league_id)', 'This league is already linked to the manager.'),
+    ]
 
-    @api.depends('active_phases_ids')
+    @api.depends('active_phases_ids.phase_id.phase_id')
     def _compute_league_standing_phase(self):
         for rec in self:
-            rec.is_august = True if any(phase.phase_id.name == 'August' for phase in rec.active_phases_ids) else False
-            rec.is_september = True if any(phase.phase_id.name == 'September' for phase in rec.active_phases_ids) else False
-            rec.is_october = True if any(phase.phase_id.name == 'October' for phase in rec.active_phases_ids) else False
-            rec.is_november = True if any(phase.phase_id.name == 'November' for phase in rec.active_phases_ids) else False
-            rec.is_december = True if any(phase.phase_id.name == 'December' for phase in rec.active_phases_ids) else False
-            rec.is_january = True if any(phase.phase_id.name == 'January' for phase in rec.active_phases_ids) else False
-            rec.is_february = True if any(phase.phase_id.name == 'February' for phase in rec.active_phases_ids) else False
-            rec.is_march = True if any(phase.phase_id.name == 'March' for phase in rec.active_phases_ids) else False
-            rec.is_april = True if any(phase.phase_id.name == 'April' for phase in rec.active_phases_ids) else False
-            rec.is_may = True if any(phase.phase_id.name == 'May' for phase in rec.active_phases_ids) else False
+            active = set(rec.active_phases_ids.phase_id.mapped('phase_id'))
+            for phase_id, month in MONTH_PHASES.items():
+                rec[f'is_{month}'] = phase_id in active
 
     @api.depends('entry_last_rank', 'entry_rank')
     def _compute_entry_rank_form(self):
         for rec in self:
-            if rec.entry_rank > rec.entry_last_rank:
-                rec.entry_rank_form = f'<p><i class="fa fa-arrow-circle-down" style="color: #E60023"></i> {format(rec.entry_rank, ",")}</p>'
-            elif rec.entry_rank < rec.entry_last_rank:
-                rec.entry_rank_form = f'<p><i class="fa fa-arrow-circle-up" style="color: #34a853"></i> {format(rec.entry_rank, ",")}</p>'
-            elif rec.entry_rank == rec.entry_last_rank:
-                rec.entry_rank_form = f'<p><i class="fa fa-circle" style="color: #87668a"></i> {format(rec.entry_rank, ",")}</p>'
+            rec.entry_rank_form = rank_form_html(rec.entry_rank, rec.entry_last_rank)
 
-    @api.depends('active_phases_ids')
+    @api.depends('active_phases_ids.total', 'active_phases_ids.phase_id.phase_id')
     def _compute_overall_points(self):
         for league in self:
-            if league.active_phases_ids:
-                league.overall_points = league.active_phases_ids.search([('phase_id', '=', 1)], limit=1).total
-            else:
-                league.overall_points = 0
-    
-    # def cron_get_data_league_standings(self):
-    #     try:
-            
-                        
-    #     except FPLApiException as e:
-    #         _logger.error(f"FPL API error during league standings sync: {str(e)}")
-    #         raise UserError(f"FPL API error during league standings sync: {str(e)}")
-    #     except Exception as e:
-    #         _logger.error(f"Unexpected error during sync: {str(e)}")
-    #         raise UserError(f"Unexpected error during sync: {str(e)}")
+            overall = league.active_phases_ids.filtered(lambda phase: phase.phase_id.phase_id == OVERALL_PHASE_ID)
+            league.overall_points = overall[:1].total

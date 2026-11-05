@@ -5,7 +5,9 @@ import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useService } from "@web/core/utils/hooks";
 import { Component } from "@odoo/owl";
 
-const TEAM_LOGO_PATH = "/fantasy_premier_league/static/src/img/teams_logo";
+function teamLogoUrl(teamId) {
+    return teamId ? `/web/image/fpl.teams/${teamId}/photo` : "";
+}
 
 function openFixtureWizard(actionService, fixtureId) {
     if (!fixtureId) {
@@ -63,7 +65,7 @@ export class FplTeamBadgeField extends Component {
     }
 
     get logoSrc() {
-        return this.teamCode ? `${TEAM_LOGO_PATH}/${this.teamCode}.svg` : "";
+        return teamLogoUrl(this.teamId);
     }
 
     onBadgeClick() {
@@ -129,7 +131,7 @@ export class FplNextOpponentField extends Component {
     }
 
     get logoSrc() {
-        return this.opponentCode ? `${TEAM_LOGO_PATH}/${this.opponentCode}.svg` : "";
+        return teamLogoUrl(this.props.record.data.next_opponent_id[0]);
     }
 
     get fixtureId() {

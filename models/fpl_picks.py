@@ -1,11 +1,15 @@
-from odoo import models, fields, api
+from markupsafe import Markup
+
+from odoo import api, fields, models
+
 
 class FPLPicks(models.Model):
     _name = 'fpl.picks'
     _description = 'FPL Picks'
+    _order = 'position, id'
 
-    element_id = fields.Many2one('fpl.elements', string='Player')
-    position = fields.Char(string='Position')
+    element_id = fields.Many2one('fpl.elements', string='Player', index=True)
+    position = fields.Integer(string='Position')
     multiplier = fields.Integer(string='Multiplier')
     team_id = fields.Many2one('fpl.teams', string='Team', related='element_id.fpl_team_id')
     is_captain = fields.Boolean(string='Is Captain')
@@ -14,11 +18,15 @@ class FPLPicks(models.Model):
     selling_price = fields.Float(string='Selling Price')
     purchase_price = fields.Float(string='Purchase Price')
     currency_id = fields.Many2one('res.currency', string='Currency')
-    manager_id = fields.Many2one('fpl.manager.team', string='Manager')
+    manager_id = fields.Many2one('fpl.manager.team', string='Manager', required=True, index=True,
+                                 ondelete='cascade')
     web_name = fields.Char(string='Web Name', related='element_id.web_name')
-    team_display = fields.Html(compute='_compute_team_display')
+    team_display = fields.Html(compute='_compute_team_display', sanitize=False)
 
-    @api.depends('team_id')
+    @api.depends('team_id.photo_checksum', 'team_id.short_name')
     def _compute_team_display(self):
         for rec in self:
-            rec.team_display = f'<img src="/fantasy_premier_league/static/src/img/teams_logo/{rec.team_id.code}.svg" style="width: 20px; height: 20px; border-radius: 10px;"/> <span style="font-size: 12px;">{rec.team_id.short_name}</span>'
+            rec.team_display = Markup(
+                '<img src="%s" style="width: 20px; height: 20px; border-radius: 10px;"/> '
+                '<span style="font-size: 12px;">%s</span>'
+            ) % (rec.team_id._logo_url(), rec.team_id.short_name or '') if rec.team_id else False

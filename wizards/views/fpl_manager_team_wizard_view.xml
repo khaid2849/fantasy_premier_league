@@ -21,12 +21,19 @@
                             You'll see a URL similar to this: https://fantasy.premierleague.com/entry/1234567/event/1.<br/>
                             The number after /entry/ and before /event/ (in this case, 1234567) is your FPL ID, according to several FPL resources.<br/><br/>
 
-                            <strong>How to get your FPL Refresh Token (only needed once)?</strong><br/>
-                            <em>Note: Without a token, only public data (summary, history, leagues) is synced.</em><br/>
+                            <strong>Connect your FPL login (recommended, once)</strong><br/>
+                            <em>Without it, only public data (summary, history, leagues) is synced.</em><br/>
+                            On the server machine, in a desktop terminal, run <code>sh docker/fpl-login.sh &lt;Manager ID&gt;</code>
+                            and log in to your Premier League account in the window that opens.
+                            Odoo then gets new FPL tokens by itself; you only need to log in again when the
+                            Premier League session itself expires (a message is posted on the manager).
+                            Then just click "Verify Your Team" with your Manager ID, the refresh token can stay empty.<br/><br/>
+
+                            <strong>Or paste a refresh token (expires after a few days)</strong><br/>
                             1. Log in to <a href="https://fantasy.premierleague.com/" target="_blank">https://fantasy.premierleague.com/</a> and open the developer tools (Ctrl+Shift+I or F12)<br/>
                             2. Go to the Console tab and run (type "allow pasting" first if Chrome blocks it):<br/>
                             <code>copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=&gt;k.startsWith('oidc.user:')))).refresh_token)</code><br/>
-                            3. Paste the copied value in the field above. Odoo refreshes the token automatically afterwards.
+                            3. Paste the copied value in the field above.
                         </p>
                     </group>
                 </sheet>

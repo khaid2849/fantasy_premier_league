@@ -13,5 +13,14 @@
             <field name="email">fplbot@example.com</field>
             <field name="login">fpl_bot</field>
         </record>
+
+        <!-- Live match updates (goals, red cards...) posted by the fixtures cron -->
+        <record id="channel_fpl_live" model="discuss.channel">
+            <field name="name">FPL Live</field>
+            <field name="channel_type">channel</field>
+            <field name="description">Live Premier League match updates: goals, red cards, penalties...</field>
+            <field name="group_public_id" ref="base.group_user"/>
+        </record>
+        <function model="fpl.gameweek.fixtures" name="_init_live_channel_members"/>
     </data>
 </odoo>

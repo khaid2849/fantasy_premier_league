@@ -27,68 +27,35 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button type="object" disabled="disabled" special="cancel" 
-                                invisible="used_wildcard"
-                                class="oe_stat_button" icon="fa-exchange">
+                        <button type="object" disabled="disabled" special="cancel" class="oe_stat_button" icon="fa-exchange">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_value d-flex gap-1">
+                                    <field name="chip_wildcard_state" readonly="1"/>
+                                </span>
                                 <span class="o_stat_text">Wildcard</span>
                             </div>
                         </button>
-                        <button type="object" disabled="disabled" special="cancel"
-                                invisible="used_free_hit"
-                                class="oe_stat_button" icon="fa-random">
+                        <button type="object" disabled="disabled" special="cancel" class="oe_stat_button" icon="fa-random">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_value d-flex gap-1">
+                                    <field name="chip_free_hit_state" readonly="1"/>
+                                </span>
                                 <span class="o_stat_text">Free Hit</span>
                             </div>
                         </button>
-                            <button type="object" disabled="disabled" special="cancel"
-                                invisible="used_bench_boost"
-                                class="oe_stat_button" icon="fa-rocket">
+                        <button type="object" disabled="disabled" special="cancel" class="oe_stat_button" icon="fa-rocket">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Used</span>
+                                <span class="o_stat_value d-flex gap-1">
+                                    <field name="chip_bench_boost_state" readonly="1"/>
+                                </span>
                                 <span class="o_stat_text">Bench Boost</span>
                             </div>
                         </button>
-                            <button type="object" disabled="disabled" special="cancel"
-                                invisible="used_triple_captain"
-                                class="oe_stat_button" icon="fa-bars">
+                        <button type="object" disabled="disabled" special="cancel" class="oe_stat_button" icon="fa-bars">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Used</span>
-                                <span class="o_stat_text">Triple Captain</span>
-                            </div>
-                        </button>
-
-                        <button type="object" disabled="disabled" special="cancel"
-                                invisible="not used_wildcard"
-                                class="oe_stat_button" icon="fa-exchange">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Not Used</span>
-                                <span class="o_stat_text">Wildcard</span>
-                            </div>
-                        </button>
-                        <button type="object" disabled="disabled" special="cancel"
-                                invisible="not used_free_hit"
-                                class="oe_stat_button" icon="fa-random">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Not Used</span>
-                                <span class="o_stat_text">Free Hit</span>
-                            </div>
-                        </button>
-                            <button type="object" disabled="disabled" special="cancel"
-                                invisible="not used_bench_boost"
-                                class="oe_stat_button" icon="fa-rocket">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Not Used</span>
-                                <span class="o_stat_text">Bench Boost</span>
-                            </div>
-                        </button>
-                        <button type="object" disabled="disabled" special="cancel"
-                                invisible="not used_triple_captain"
-                                class="oe_stat_button" icon="fa-bars">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value d-flex gap-1">Not Used</span>
+                                <span class="o_stat_value d-flex gap-1">
+                                    <field name="chip_triple_captain_state" readonly="1"/>
+                                </span>
                                 <span class="o_stat_text">Triple Captain</span>
                             </div>
                         </button>
@@ -120,6 +87,8 @@
                             <field name="date_of_birth"/>
                             <field name="gender"/>
                             <field name="has_fpl_token"/>
+                            <field name="browser_session_date" invisible="not browser_session_date"/>
+                            <field name="last_sync_date"/>
                         </group>
                         <group>
                             <field name="joined_time"/>

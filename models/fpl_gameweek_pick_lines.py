@@ -1,193 +1,107 @@
-from odoo import models, fields, api
-from odoo.exceptions import UserError
-from .fpl_api_mixin import FPLApiMixin
-from ..services.fpl_api_client import FPLApiException
-import logging
+from odoo import _, api, fields, models
 
-_logger = logging.getLogger(__name__)
 
-class FplGameweekPickLines(models.Model, FPLApiMixin):
+class FplGameweekPickLines(models.Model):
     _name = 'fpl.gameweek.pick.lines'
+    _inherit = ['fpl.api.mixin']
     _description = 'FPL Gameweek Pick Lines'
+    _order = 'gameweek_pick_id, position'
 
-    gameweek_pick_id = fields.Many2one('fpl.gameweek.picks', string='Gameweek Pick')
-    element_id = fields.Many2one('fpl.elements', string='Player')
-    position = fields.Integer(string='Points')
+    gameweek_pick_id = fields.Many2one('fpl.gameweek.picks', string='Gameweek Pick', required=True, index=True,
+                                       ondelete='cascade')
+    element_id = fields.Many2one('fpl.elements', string='Player', index=True)
+    position = fields.Integer(string='Position')
     multiplier = fields.Integer(string='Multiplier')
     is_captain = fields.Boolean(string='Is Captain')
     is_vice_captain = fields.Boolean(string='Is Vice Captain')
     element_type_id = fields.Many2one('fpl.element.types', string='Element Type')
+    # Snapshot of the club at the time of the gameweek (players may move later on)
     team_id = fields.Many2one('fpl.teams', string='Team')
     team_code = fields.Char()
     team_name = fields.Char()
-    total_points = fields.Integer(string='Total points')
     web_name = fields.Char()
-    plural_name_short= fields.Char(related='element_type_id.plural_name_short')
+    raw_points = fields.Integer(string='Points', help="Points scored by the player, before the captain multiplier.")
+    total_points = fields.Integer(string='Total points', help="Points counted for the manager (captain multiplier "
+                                                              "applied; raw points for the bench).")
+    plural_name_short = fields.Char(related='element_type_id.plural_name_short')
     element_stats_ids = fields.One2many('fpl.element.stats', 'pick_line_id', string='Stats')
-    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Gameweek Fixutre')
+    gw_fixture_id = fields.Many2one('fpl.gameweek.fixtures', string='Gameweek Fixture')
 
+    # Fixture header of the player stats popup
+    team_h = fields.Many2one(related='gw_fixture_id.team_h', string='Home team')
+    team_a = fields.Many2one(related='gw_fixture_id.team_a', string='Away team')
+    team_h_photo = fields.Image(related='gw_fixture_id.team_h.photo')
+    team_a_photo = fields.Image(related='gw_fixture_id.team_a.photo')
+    team_h_score = fields.Integer(related='gw_fixture_id.team_h_score')
+    team_a_score = fields.Integer(related='gw_fixture_id.team_a_score')
+    kickoff_time = fields.Datetime(related='gw_fixture_id.kickoff_time')
+    started = fields.Boolean(related='gw_fixture_id.started')
+    finished = fields.Boolean(related='gw_fixture_id.finished')
+
+    _sql_constraints = [
+        ('pick_element_uniq', 'unique(gameweek_pick_id, element_id)', 'A player can only be picked once.'),
+    ]
 
     @api.model
-    def sync_gameweek_picks(self, manager_team, gw):
-        try:
-            if not gw.get('finished') and not gw.get('is_current') and not gw.get('is_previous') and not gw.get('is_next'):
-                return
-            exist_pick = self.env['fpl.gameweek.picks'].search([('manager_id', '=', manager_team.get('id')), ('event_id', '=', gw.get('id'))])
+    def _sync_pick_lines(self, gameweek_pick, picks, live_elements, event):
+        """Replace the lines of ``gameweek_pick`` with ``picks`` and their
+        points breakdown taken from the gameweek live data."""
+        elements = {
+            element.element_id: element
+            for element in self.env['fpl.elements'].search([
+                ('element_id', 'in', [pick.get('element') for pick in picks]),
+            ])
+        }
+        element_types = self.env['fpl.element.types']._get_types_by_api_id()
+        fixtures = self.env['fpl.gameweek.fixtures']._get_fixtures_by_api_id(event.season)
+        existing = {line.element_id.id: line for line in gameweek_pick.pick_lines}
 
-            gw_picks = self.sync_from_fpl_api('get_gameweek_picks', team_id=manager_team.get('manager_id'), gw_id=gw.get('event_id'))
-            element_datas = self.sync_from_fpl_api('get_element_gameweek_live', gw_id=gw.get('event_id'))
-
-            entry_history = gw_picks.get('entry_history')
-            gw_pick_lines = gw_picks.get('picks')
-            gw_pick_val = {
-                'event_id': gw.get('id'),
-                'manager_id': manager_team.get('id'),
-                'points': entry_history.get('points'),
-                'total_points': entry_history.get('total_points'),
-                'rank': entry_history.get('rank'),
-                'rank_sort': entry_history.get('rank_sort'),
-                'overall_rank': entry_history.get('overall_rank'),
-                'percentile_rank': entry_history.get('percentile_rank'),
-                'bank': entry_history.get('bank') / 10,
-                'value': entry_history.get('value') / 10,
-                'event_transfers': entry_history.get('event_transfers'),
-                'event_transfers_cost': entry_history.get('event_transfers_cost') / 10,
-                'points_on_bench': entry_history.get('points_on_bench'),
-            }
-
-            if exist_pick:
-                exist_pick.update(gw_pick_val)
-            else:
-                create_gw_pick = self.env['fpl.gameweek.picks'].create(gw_pick_val)
-                exist_pick = create_gw_pick
-
-            self._get_gw_picks_lines(gw_pick_lines, exist_pick, element_datas.get('elements'))
-
-        except FPLApiException as e:
-            _logger.error(f"Failed to sync gameweek picks data: {str(e)}")
-            
-            raise UserError(f"Failed to sync gameweek picks data: {str(e)}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
-    
-    def _get_gw_picks_lines(self, picks, gw_pick, element_datas):
+        vals_by_key, explains = {}, {}
         for pick in picks:
-            element_id = self.env['fpl.elements'].search([('element_id', '=', pick.get('element'))])
-            val = {
-                'gameweek_pick_id': gw_pick.id,
-                'element_id': element_id.id,
-                'element_type_id': self.env['fpl.element.types'].search([('element_type_id', '=', pick.get('element_type'))]).id,
-                'team_id': element_id.fpl_team_id.id,
-                'team_code': element_id.fpl_team_id.code,
-                'team_name': element_id.fpl_team_id.name,
-                'web_name': element_id.web_name,
+            element = elements.get(pick.get('element'))
+            if not element:
+                continue
+            live = live_elements.get(pick.get('element')) or {}
+            explain = live.get('explain') or []
+            raw_points = (live.get('stats') or {}).get('total_points') or 0
+            multiplier = pick.get('multiplier') or 0
+            first_fixture = fixtures.get(explain[0].get('fixture')) if explain else None
+            element_type = element_types.get(str(pick.get('element_type')))
+            vals_by_key[element.id] = {
+                'gameweek_pick_id': gameweek_pick.id,
+                'element_id': element.id,
+                'element_type_id': element_type.id if element_type else element.element_type_id.id,
+                'team_id': element.fpl_team_id.id,
+                'team_code': element.fpl_team_id.code,
+                'team_name': element.fpl_team_id.name,
+                'web_name': element.web_name,
                 'position': pick.get('position'),
-                'multiplier': pick.get('multiplier'),
-                'is_captain': pick.get('is_captain'),
-                'is_vice_captain': pick.get('is_vice_captain'),
-                'gameweek_pick_id': gw_pick.id,
+                'multiplier': multiplier,
+                'is_captain': bool(pick.get('is_captain')),
+                'is_vice_captain': bool(pick.get('is_vice_captain')),
+                'raw_points': raw_points,
+                'total_points': raw_points * multiplier if multiplier else raw_points,
+                'gw_fixture_id': first_fixture.id if first_fixture else False,
             }
-            pick_line = self.env['fpl.gameweek.pick.lines'].search([('gameweek_pick_id', '=', gw_pick.id), ('element_id', '=', element_id.id)], limit=1)
-            if pick_line:
-                pick_line.update(val)
-            else:
-                pick_line = self.env['fpl.gameweek.pick.lines'].create(val)
+            explains[element.id] = explain
 
-            self._get_element_stat_lines(pick_line, element_datas)
+        lines = self._fpl_upsert(self, existing, vals_by_key, unlink_missing=True)
+        self.env['fpl.element.stats']._sync_points_breakdown(
+            {lines[key]: explains[key] for key in lines}, fixtures,
+        )
 
-    def _get_element_stat_lines(self, pick_line, element_datas):
-        try:
-            self.env['fpl.element.stats'].search([('pick_line_id', '=', pick_line.id), ('pick_line_id.element_id', '=', pick_line.element_id.id)]).unlink()
-            for el in element_datas:
-                if el.get('id') == pick_line.element_id.element_id:
-                    stat_vals = el.get('explain')[0].get('stats')
-                    fixture = self.env['fpl.gameweek.fixtures'].search([('gw_fixture_id', '=', el.get('explain')[0].get('fixture'))])
-                    
-                    for st in stat_vals:
-                        st.update({'pick_line_id': pick_line.id,})
-
-                    self.env['fpl.element.stats'].create(stat_vals)
-                    pick_line.update(
-                        {
-                            'gw_fixture_id': fixture.id, 
-                            'total_points': el.get('stats').get('total_points') * 2 if pick_line.is_captain  else el.get('stats').get('total_points')
-                        }
-                    )
-                    
-        except FPLApiException as e:
-            _logger.error(f"Failed to sync gameweek element stats data: {str(e)}")
-            raise UserError(f"Failed to sync gameweek element stats data: {str(e)}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
-
-    @api.model
-    def get_pick_formations(self, picks):
-        lineup_gkp = []
-        lineup_def = []
-        lineup_mid = []
-        lineup_fwd = []
-
-        sub_elements = []
-
-        lineups_element_mapping = {
-            'GKP': lineup_gkp,
-            'DEF': lineup_def,
-            'MID': lineup_mid,
-            'FWD': lineup_fwd,
-        }
-
-        for pick in picks:
-            if hasattr(pick, 'position'):
-                # This is a recordset object
-                position = pick.position
-                pick_id = pick.id
-                plural_name_short = pick.element_type_id.plural_name_short
-            else:
-                # This is dictionary data from JavaScript
-                position = pick['position']
-                pick_id = pick['id']
-                plural_name_short = pick['element_type_id']['plural_name_short']
-            
-            if position in [12, 13, 14, 15]:
-                sub_elements.append(pick_id)
-            
-            for pos, elements in lineups_element_mapping.items():
-                if position == 1 and plural_name_short == pos:
-                    elements.append(pick_id)
-                
-                elif position in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] and plural_name_short == pos:
-                    elements.append(pick_id)
-
-        return {
-            'lineup_gkp': lineup_gkp,
-            'lineup_def': lineup_def,
-            'lineup_mid': lineup_mid,
-            'lineup_fwd': lineup_fwd,
-            'sub_elements': sub_elements,
-        }
-    
     @api.model
     def action_open_player_stats(self, pick_line_id):
-        element_stats_ids = self.env['fpl.element.stats'].search([('pick_line_id', '=', pick_line_id)])
-        pick_line = self.browse(pick_line_id)
-        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_gameweek_pick_lines_wizard_action')
-        action.update({
-                'context': {
-                    'default_element_stats_ids': element_stats_ids.ids,
-                    'default_gw_fixture_id': pick_line.gw_fixture_id.id,
-                    'default_element_id': pick_line.element_id.id,
-                    'default_team_h_photo': pick_line.gw_fixture_id.team_h_photo,
-                    'default_team_h': pick_line.gw_fixture_id.team_h.id,
-                    'default_team_h_score': pick_line.gw_fixture_id.team_h_score,
-                    'default_team_a_photo': pick_line.gw_fixture_id.team_a_photo,
-                    'default_team_a': pick_line.gw_fixture_id.team_a.id,
-                    'default_team_a_score': pick_line.gw_fixture_id.team_a_score,
-                    'default_kickoff_time': pick_line.gw_fixture_id.kickoff_time,
-                    'default_started': pick_line.gw_fixture_id.started,
-                    'default_finished': pick_line.gw_fixture_id.finished,
-                },
-            }
-        )
-        return action
+        """Points breakdown popup of a player of the pitch view."""
+        line = self.browse(int(pick_line_id)).exists()
+        if not line:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Player Stats"),
+            'res_model': self._name,
+            'res_id': line.id,
+            'view_mode': 'form',
+            'views': [(self.env.ref('fantasy_premier_league.fpl_gameweek_pick_lines_stats_form_view').id, 'form')],
+            'target': 'new',
+        }

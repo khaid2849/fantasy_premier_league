@@ -1,522 +1,384 @@
 import base64
+import hashlib
 import io
 import logging
-import os
-import requests
-
-try:
-    import cairosvg
-except ImportError:
-    cairosvg = None
+from datetime import timedelta
 
 from PIL import Image
 
-from odoo import models, api, _
-from odoo.exceptions import UserError
-from odoo.tools.misc import file_path
-from .fpl_api_mixin import FPLApiMixin
+from odoo import _, api, fields, models
+
+from ..services.fpl_api_client import FPLApiException, fetch_many, http_get_bytes
 from .master_data import REGIONS
-from datetime import datetime
+
+try:
+    import cairosvg
+except (ImportError, OSError):  # OSError: cairo system library missing
+    cairosvg = None
 
 _logger = logging.getLogger(__name__)
 
-class FplImportData(models.Model, FPLApiMixin):
+REGION_ISO_BY_ID = {region['id']: region['iso_code_short'] for region in REGIONS}
+
+PLAYER_PHOTO_URL = 'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
+TEAM_BADGE_URL = 'https://resources.premierleague.com/premierleague25/badges/{code}.svg'
+TEAM_SHIRT_URL = 'https://fantasy.premierleague.com/dist/img/shirts/standard/{name}'
+# fpl.teams field -> file name on the FPL CDN (the 110px kits used by the pitch view)
+SHIRT_VARIANTS = {
+    'shirt_image': 'shirt_{code}-110.webp',
+    'shirt_gkp_image': 'shirt_{code}_1-110.webp',
+}
+# Size of the PNG rendered from the SVG club badges
+LOGO_SIZE = 256
+# An image that does not exist on the CDN (404) is asked again after that delay
+IMAGE_RETRY_DELAY = timedelta(days=7)
+IMAGE_CRON_XMLID = 'fantasy_premier_league.ir_cron_download_fpl_images'
+
+# API keys that are not copied as-is into fpl.elements
+_ELEMENT_SPECIAL_KEYS = {
+    'id', 'code', 'team', 'team_code', 'element_type', 'now_cost', 'photo', 'status',
+    'team_join_date', 'birth_date', 'region',
+}
+
+
+class FplImportData(models.AbstractModel):
+    """Bootstrap-static sync (reference data) and image downloads."""
     _name = 'fpl.import.data'
+    _inherit = ['fpl.api.mixin']
     _description = 'FPL Import Data'
 
+    # ------------------------------------------------------------------
+    # Bootstrap static
+    # ------------------------------------------------------------------
+
+    @api.model
     def cron_get_data_boostrap_static(self):
         try:
-            bootstrap_static_datas = self.sync_from_fpl_api('get_bootstrap_static')
-            
-            _logger.info("Starting bootstrap static data sync")
-            
-            # Sync chips data
-            chips_data = bootstrap_static_datas.get('chips', [])
-            self._sync_chips_data(chips_data)
-            
-            # Sync events data
-            events_data = bootstrap_static_datas.get('events', [])
-            self._sync_events_data(events_data)
-            
-            # Sync phases data
-            phases_data = bootstrap_static_datas.get('phases', [])
-            self._sync_phases_data(phases_data)
-            
-            # Sync teams data
-            teams_data = bootstrap_static_datas.get('teams', [])
-            self._sync_teams_data(teams_data)
-            
-            # Sync element types data
-            element_types_data = bootstrap_static_datas.get('element_types', [])
-            self._sync_element_types_data(element_types_data)
-            
-            # Sync elements data
-            elements_data = bootstrap_static_datas.get('elements', [])
-            self._sync_elements_data(elements_data)
-            
-            _logger.info("Bootstrap static data sync completed successfully")
-            
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
-    
+            data = self.sync_from_fpl_api('get_bootstrap_static')
+        except FPLApiException as e:
+            raise self._fpl_user_error(_("Failed to fetch the FPL bootstrap data"), e) from e
+
+        _logger.info("Starting bootstrap static data sync")
+        self._sync_chips_data(data.get('chips') or [])
+        self._sync_events_data(data.get('events') or [])
+        self._sync_phases_data(data.get('phases') or [])
+        self._sync_teams_data(data.get('teams') or [])
+        self._sync_element_types_data(data.get('element_types') or [])
+        self._sync_elements_data(data.get('elements') or [])
+        _logger.info("Bootstrap static data sync completed successfully")
+        return True
+
     def _sync_chips_data(self, chips_data):
-        """Sync chips data from API"""
-        chips_model = self.env['fpl.chips']
-        for chip_data in chips_data:
-            existing_chip = chips_model.search([('chip_id', '=', str(chip_data.get('id')))], limit=1)
-            vals = {
-                    'chip_id': str(chip_data.get('id')),
-                    'name': chip_data.get('name'),
-                    'number': chip_data.get('number'),
-                    'start_event': chip_data.get('start_event'),
-                    'stop_event': chip_data.get('stop_event'),
-                    'chip_type': chip_data.get('chip_type'),
-                    'is_bench_boost': True if chip_data.get('name') == 'bboost' else False,
-                    'is_wildcard': True if chip_data.get('name') == 'wildcard' else False,
-                    'is_free_hit': True if chip_data.get('name') == 'freehit' else False,
-                    'is_triple_captain': True if chip_data.get('name') == '3xc' else False,
-                }
-            if existing_chip:
-                existing_chip.write(vals)
-            else:
-                chips_model.create(vals)
-        _logger.info(f"Synced {len(chips_data)} chips")
-    
-    def _prase_datetime_values(self, time_val):
-        time_val = datetime.fromisoformat(time_val.replace('Z', ''))
-        return time_val
-                
+        Chips = self.env['fpl.chips']
+        existing = {chip.chip_id: chip for chip in Chips.search([])}
+        vals_by_key = {
+            str(chip['id']): {
+                'chip_id': str(chip['id']),
+                'name': chip.get('name'),
+                'number': chip.get('number'),
+                'start_event': chip.get('start_event'),
+                'stop_event': chip.get('stop_event'),
+                'chip_type': chip.get('chip_type'),
+            }
+            for chip in chips_data
+        }
+        self._fpl_upsert(Chips, existing, vals_by_key)
+        _logger.info("Synced %s chips", len(vals_by_key))
 
     def _sync_events_data(self, events_data):
-        """Sync events data from API"""
-        events_model = self.env['fpl.events']
-        for event_data in events_data:
-            deadline_time = self._prase_datetime_values(event_data.get('deadline_time')) if event_data.get('deadline_time') else False
-            season = events_model._season_from_date(deadline_time)
-            # Match on (event_id, season): the FPL API reuses event_id 1-38 every
-            # season, so matching on event_id alone would overwrite last season's
-            # event with this season's data instead of creating a new one.
-            existing_event = events_model.search([
-                ('event_id', '=', event_data.get('id')),
-                ('season', '=', season),
-            ], limit=1)
-
-            vals = {
-                'event_id': event_data.get('id'),
-                'name': event_data.get('name'),
+        Events = self.env['fpl.events']
+        existing = {(event.event_id, event.season): event for event in Events.search([])}
+        vals_by_key = {}
+        chip_plays_by_key = {}
+        for event in events_data:
+            deadline_time = self._fpl_parse_datetime(event.get('deadline_time'))
+            # The FPL API re-uses event ids 1-38 every season: match on (id, season)
+            key = (event['id'], Events._season_from_date(deadline_time))
+            vals = self._fpl_filter_vals(Events._name, event, exclude={'id', 'deadline_time', 'release_time'})
+            vals.update({
+                'event_id': event['id'],
                 'deadline_time': deadline_time,
-                'release_time': self._prase_datetime_values(event_data.get('release_time')) if event_data.get('release_time') else False,
-                'average_entry_score': event_data.get('average_entry_score'),
-                'finished': event_data.get('finished', False),
-                'data_checked': event_data.get('data_checked', False),
-                'highest_scoring_entry': event_data.get('highest_scoring_entry'),
-                'deadline_time_epoch': event_data.get('deadline_time_epoch'),
-                'deadline_time_game_offset': event_data.get('deadline_time_game_offset'),
-                'highest_score': event_data.get('highest_score'),
-                'is_previous': event_data.get('is_previous', False),
-                'is_current': event_data.get('is_current', False),
-                'is_next': event_data.get('is_next', False),
-                'cup_leagues_created': event_data.get('cup_leagues_created', False),
-                'h2h_ko_matches_created': event_data.get('h2h_ko_matches_created', False),
-                'can_enter': event_data.get('can_enter', False),
-                'can_manage': event_data.get('can_manage', False),
-                'released': event_data.get('released', False),
-                'ranked_count': event_data.get('ranked_count'),
-                'most_selected': event_data.get('most_selected'),
-                'most_transferred_in': event_data.get('most_transferred_in'),
-                'transfers_made': event_data.get('transfers_made'),
-                'most_captained': event_data.get('most_captained'),
-                'most_vice_captained': event_data.get('most_vice_captained'),
-            }
-            if existing_event:
-                existing_event.write(vals)
-                event_record = existing_event
-            else:
-                event_record = events_model.create(vals)
-            
-            # Handle chip_plays for this event
-            chip_plays_data = event_data.get('chip_plays', [])
-            if chip_plays_data:
-                self._sync_event_chip_plays(event_record, chip_plays_data)
-        
-        _logger.info(f"Synced {len(events_data)} events")
-    
-    def _sync_event_chip_plays(self, event_record, chip_plays_data):
-        """Sync chip plays data for an event"""
-        chip_plays_model = self.env['fpl.event.chip.plays']
-        
-        existing_chip_plays = chip_plays_model.search([('event_id', '=', event_record.id)])
-        existing_chip_plays.unlink()
-        
-        for chip_play_data in chip_plays_data:
-            vals = {
-                'event_id': event_record.id,
-                'chip_name': chip_play_data.get('chip_name'),
-                'num_played': chip_play_data.get('num_played', 0),
-            }
-            chip_plays_model.create(vals)
-    
+                'release_time': self._fpl_parse_datetime(event.get('release_time')),
+            })
+            vals_by_key[key] = vals
+            chip_plays_by_key[key] = event.get('chip_plays') or []
+
+        events = self._fpl_upsert(Events, existing, vals_by_key)
+
+        # Events of past seasons are not returned anymore: they must not stay
+        # flagged as the current/next gameweek forever.
+        stale = Events.browse([
+            rec.id for key, rec in existing.items()
+            if key not in vals_by_key and (rec.is_current or rec.is_next or rec.is_previous)
+        ])
+        if stale:
+            stale.write({'is_current': False, 'is_next': False, 'is_previous': False})
+
+        self._sync_event_chip_plays(events, chip_plays_by_key)
+        _logger.info("Synced %s events", len(vals_by_key))
+
+    def _sync_event_chip_plays(self, events, chip_plays_by_key):
+        ChipPlays = self.env['fpl.event.chip.plays']
+        event_ids = [event.id for event in events.values()]
+        existing = {
+            (play.event_id.id, play.chip_name): play
+            for play in ChipPlays.search([('event_id', 'in', event_ids)])
+        }
+        vals_by_key = {}
+        for key, chip_plays in chip_plays_by_key.items():
+            event = events[key]
+            for chip_play in chip_plays:
+                vals_by_key[(event.id, chip_play.get('chip_name'))] = {
+                    'event_id': event.id,
+                    'chip_name': chip_play.get('chip_name'),
+                    'num_played': chip_play.get('num_played') or 0,
+                }
+        self._fpl_upsert(ChipPlays, existing, vals_by_key, unlink_missing=True)
+
     def _sync_phases_data(self, phases_data):
-        """Sync phases data from API"""
-        phases_model = self.env['fpl.phases']
-        for phase_data in phases_data:
-            existing_phase = phases_model.search([('phase_id', '=', phase_data.get('id'))], limit=1)
-            vals = {
-                'phase_id': phase_data.get('id'),
-                'name': phase_data.get('name'),
-                'start_event': phase_data.get('start_event'),
-                'stop_event': phase_data.get('stop_event'),
-                'highest_score': phase_data.get('highest_score'),
+        Phases = self.env['fpl.phases']
+        existing = {phase.phase_id: phase for phase in Phases.search([])}
+        vals_by_key = {
+            phase['id']: {
+                'phase_id': phase['id'],
+                'name': phase.get('name'),
+                'start_event': phase.get('start_event'),
+                'stop_event': phase.get('stop_event'),
+                'highest_score': phase.get('highest_score'),
             }
-            if existing_phase:
-                existing_phase.write(vals)
-            else:
-                phases_model.create(vals)
-        _logger.info(f"Synced {len(phases_data)} phases")
-    
-    def _get_photo_png(self, code, path):
-        try:
-            team_photo_file = file_path(f'{path}/{code}.png')
-        except FileNotFoundError:
-            # Expected/benign: the image hasn't been downloaded yet (cron
-            # hasn't run for this code, or it doesn't have one available).
-            return False
+            for phase in phases_data
+        }
+        self._fpl_upsert(Phases, existing, vals_by_key)
+        _logger.info("Synced %s phases", len(vals_by_key))
 
-        try:
-            with open(team_photo_file, 'rb') as file:
-                png_content = file.read()
-            return base64.b64encode(png_content)
-        except Exception as e:
-            _logger.error(f"Error loading photo for code {code}: {str(e)} in path: {path}")
-            return False
-    
     def _sync_teams_data(self, teams_data):
-        """Sync teams data from API"""
-        teams_model = self.env['fpl.teams']
-        for team_data in teams_data:
-            existing_team = teams_model.search([('team_id', '=', team_data.get('id'))], limit=1)
-            photo = self._get_photo_png(code=team_data.get('code'), path='fantasy_premier_league/static/src/img/teams_logo')
-            vals = {
-                'team_id': team_data.get('id'),
-                'name': team_data.get('name'),
-                'code': team_data.get('code'),
-                'form': team_data.get('form'),
-                'loss': team_data.get('loss'),
-                'played': team_data.get('played'),
-                'points': team_data.get('points'),
-                'position': team_data.get('position'),
-                'short_name': team_data.get('short_name'),
-                'strength': team_data.get('strength'),
-                'team_division': team_data.get('team_division'),
-                'unavailable': team_data.get('unavailable', False),
-                'win': team_data.get('win'),
-                'draw': team_data.get('draw'),
-                'strength_overall_home': team_data.get('strength_overall_home'),
-                'strength_overall_away': team_data.get('strength_overall_away'),
-                'strength_attack_home': team_data.get('strength_attack_home'),
-                'strength_attack_away': team_data.get('strength_attack_away'),
-                'strength_defence_home': team_data.get('strength_defence_home'),
-                'strength_defence_away': team_data.get('strength_defence_away'),
-                'pulse_id': team_data.get('pulse_id'),
-                'photo': photo,
-            }
-            if existing_team:
-                existing_team.write(vals)
-            else:
-                teams_model.create(vals)
-        _logger.info(f"Synced {len(teams_data)} teams")
-    
+        Teams = self.env['fpl.teams'].with_context(active_test=False)
+        existing = Teams._get_teams_by_code()
+        vals_by_key = {}
+        for team in teams_data:
+            vals = self._fpl_filter_vals(Teams._name, team, exclude={'id', 'code', 'photo'})
+            vals.update({'team_id': team['id'], 'code': str(team['code']), 'active': True})
+            vals_by_key[str(team['code'])] = vals
+
+        teams = self._fpl_upsert(Teams, existing, vals_by_key)
+
+        # Relegated clubs: archived, and their (re-assigned) team id freed so
+        # that API ids always resolve to a club of the current season.
+        relegated = Teams.browse([rec.id for code, rec in existing.items() if code not in vals_by_key])
+        if relegated:
+            relegated.write({'active': False, 'team_id': 0})
+
+        if set(vals_by_key) - set(existing):
+            self._trigger_image_download()
+        _logger.info("Synced %s teams", len(teams))
+
     def _sync_element_types_data(self, element_types_data):
-        """Sync element types data from API"""
-        element_types_model = self.env['fpl.element.types']
-        for element_type_data in element_types_data:
-            existing_element_type = element_types_model.search([('element_type_id', '=', str(element_type_data.get('id')))], limit=1)
-            vals = {
-                'element_type_id': str(element_type_data.get('id')),
-                'plural_name': element_type_data.get('plural_name'),
-                'plural_name_short': element_type_data.get('plural_name_short'),
-                'singular_name': element_type_data.get('singular_name'),
-                'singular_name_short': element_type_data.get('singular_name_short'),
-                'squad_select': element_type_data.get('squad_select'),
-                'squad_min_select': element_type_data.get('squad_min_select'),
-                'squad_max_select': element_type_data.get('squad_max_select'),
-                'squad_min_play': element_type_data.get('squad_min_play'),
-                'squad_max_play': element_type_data.get('squad_max_play'),
-                'ui_shirt_specific': element_type_data.get('ui_shirt_specific', False),
-                'element_count': element_type_data.get('element_count'),
-            }
-            if existing_element_type:
-                existing_element_type.write(vals)
-            else:
-                element_types_model.create(vals)
-        _logger.info(f"Synced {len(element_types_data)} element types")
-    
+        Types = self.env['fpl.element.types']
+        existing = Types._get_types_by_api_id()
+        vals_by_key = {}
+        for element_type in element_types_data:
+            vals = self._fpl_filter_vals(Types._name, element_type, exclude={'id'})
+            vals['element_type_id'] = str(element_type['id'])
+            vals_by_key[str(element_type['id'])] = vals
+        self._fpl_upsert(Types, existing, vals_by_key)
+        _logger.info("Synced %s element types", len(vals_by_key))
+
     def _sync_elements_data(self, elements_data):
-        """Sync elements data from API"""
-        elements_model = self.env['fpl.elements']
-        teams_model = self.env['fpl.teams']
-        element_types_model = self.env['fpl.element.types']
-        
-        for element_data in elements_data:
-            existing_element = elements_model.search([('element_id', '=', element_data.get('id'))], limit=1)
-            
-            team_id = None
-            if element_data.get('team'):
-                team = teams_model.search([('team_id', '=', element_data.get('team'))], limit=1)
-                team_id = team.id if team else None
-            
-            element_type_id = None
-            if element_data.get('element_type'):
-                element_type = element_types_model.search([('element_type_id', '=', str(element_data.get('element_type')))], limit=1)
-                element_type_id = element_type.id if element_type else None
-            
-            team_join_date = None
-            birth_date = None
-            if element_data.get('team_join_date'):
-                try:
-                    team_join_date = datetime.strptime(element_data.get('team_join_date'), '%Y-%m-%d').date()
-                except:
-                    pass
-            if element_data.get('birth_date'):
-                try:
-                    birth_date = datetime.strptime(element_data.get('birth_date'), '%Y-%m-%d').date()
-                except:
-                    pass
-            
-            region_code = next((region['iso_code_short'] for region in REGIONS if region['id'] == element_data.get('region')), None)
-            photo = self._get_photo_png(code=element_data.get('code'), path='fantasy_premier_league/static/src/img/players_avatar')
-            vals = {
-                'element_id': element_data.get('id'),
-                'fpl_team_id': team_id,
-                'element_type_id': element_type_id,
-                'can_transact': element_data.get('can_transact', False),
-                'can_select': element_data.get('can_select', False),
-                'chance_of_playing_next_round': element_data.get('chance_of_playing_next_round'),
-                'chance_of_playing_this_round': element_data.get('chance_of_playing_this_round'),
-                'code': element_data.get('code'),
-                'cost_change_event': element_data.get('cost_change_event'),
-                'cost_change_event_fall': element_data.get('cost_change_event_fall'),
-                'cost_change_start': element_data.get('cost_change_start'),
-                'cost_change_start_fall': element_data.get('cost_change_start_fall'),
-                'dreamteam_count': element_data.get('dreamteam_count'),
-                'ep_next': element_data.get('ep_next'),
-                'ep_this': element_data.get('ep_this'),
-                'event_points': element_data.get('event_points'),
-                'first_name': element_data.get('first_name'),
-                'form': element_data.get('form'),
-                'in_dreamteam': element_data.get('in_dreamteam', False),
-                'news': element_data.get('news'),
-                'news_added': element_data.get('news_added'),
-                'now_cost': element_data.get('now_cost') / 10 if element_data.get('now_cost') else 0,
-                'points_per_game': element_data.get('points_per_game'),
-                'removed': element_data.get('removed', False),
-                'second_name': element_data.get('second_name'),
-                'selected_by_percent': element_data.get('selected_by_percent'),
-                'special': element_data.get('special', False),
-                'squad_number': element_data.get('squad_number'),
-                'status': element_data.get('status'),
-                'total_points': element_data.get('total_points'),
-                'transfers_in': element_data.get('transfers_in'),
-                'transfers_in_event': element_data.get('transfers_in_event'),
-                'transfers_out': element_data.get('transfers_out'),
-                'transfers_out_event': element_data.get('transfers_out_event'),
-                'value_form': element_data.get('value_form'),
-                'value_season': element_data.get('value_season'),
-                'web_name': element_data.get('web_name'),
-                'region': element_data.get('region'),
-                'country_id': self.env['res.country'].search([('code', '=', region_code)], limit=1).id or False,
-                'team_join_date': team_join_date,
-                'birth_date': birth_date,
-                'has_temporary_code': element_data.get('has_temporary_code', False),
-                'opta_code': element_data.get('opta_code'),
-                'minutes': element_data.get('minutes'),
-                'goals_scored': element_data.get('goals_scored'),
-                'assists': element_data.get('assists'),
-                'clean_sheets': element_data.get('clean_sheets'),
-                'goals_conceded': element_data.get('goals_conceded'),
-                'own_goals': element_data.get('own_goals'),
-                'penalties_saved': element_data.get('penalties_saved'),
-                'penalties_missed': element_data.get('penalties_missed'),
-                'yellow_cards': element_data.get('yellow_cards'),
-                'red_cards': element_data.get('red_cards'),
-                'saves': element_data.get('saves'),
-                'bonus': element_data.get('bonus'),
-                'bps': element_data.get('bps'),
-                'influence': element_data.get('influence'),
-                'creativity': element_data.get('creativity'),
-                'threat': element_data.get('threat'),
-                'ict_index': element_data.get('ict_index'),
-                'clearances_blocks_interceptions': element_data.get('clearances_blocks_interceptions'),
-                'recoveries': element_data.get('recoveries'),
-                'tackles': element_data.get('tackles'),
-                'defensive_contribution': element_data.get('defensive_contribution'),
-                'starts': element_data.get('starts'),
-                'expected_goals': element_data.get('expected_goals'),
-                'expected_assists': element_data.get('expected_assists'),
-                'expected_goal_involvements': element_data.get('expected_goal_involvements'),
-                'expected_goals_conceded': element_data.get('expected_goals_conceded'),
-                'influence_rank': element_data.get('influence_rank'),
-                'influence_rank_type': element_data.get('influence_rank_type'),
-                'creativity_rank': element_data.get('creativity_rank'),
-                'creativity_rank_type': element_data.get('creativity_rank_type'),
-                'threat_rank': element_data.get('threat_rank'),
-                'threat_rank_type': element_data.get('threat_rank_type'),
-                'ict_index_rank': element_data.get('ict_index_rank'),
-                'ict_index_rank_type': element_data.get('ict_index_rank_type'),
-                'corners_and_indirect_freekicks_order': element_data.get('corners_and_indirect_freekicks_order'),
-                'corners_and_indirect_freekicks_text': element_data.get('corners_and_indirect_freekicks_text'),
-                'direct_freekicks_order': element_data.get('direct_freekicks_order'),
-                'direct_freekicks_text': element_data.get('direct_freekicks_text'),
-                'penalties_order': element_data.get('penalties_order'),
-                'penalties_text': element_data.get('penalties_text'),
-                'expected_goals_per_90': element_data.get('expected_goals_per_90'),
-                'saves_per_90': element_data.get('saves_per_90'),
-                'expected_assists_per_90': element_data.get('expected_assists_per_90'),
-                'expected_goal_involvements_per_90': element_data.get('expected_goal_involvements_per_90'),
-                'expected_goals_conceded_per_90': element_data.get('expected_goals_conceded_per_90'),
-                'goals_conceded_per_90': element_data.get('goals_conceded_per_90'),
-                'now_cost_rank': element_data.get('now_cost_rank'),
-                'now_cost_rank_type': element_data.get('now_cost_rank_type'),
-                'form_rank': element_data.get('form_rank'),
-                'form_rank_type': element_data.get('form_rank_type'),
-                'points_per_game_rank': element_data.get('points_per_game_rank'),
-                'points_per_game_rank_type': element_data.get('points_per_game_rank_type'),
-                'selected_rank': element_data.get('selected_rank'),
-                'selected_rank_type': element_data.get('selected_rank_type'),
-                'starts_per_90': element_data.get('starts_per_90'),
-                'clean_sheets_per_90': element_data.get('clean_sheets_per_90'),
-                'defensive_contribution_per_90': element_data.get('defensive_contribution_per_90'),
-                'photo': photo if photo else elements_model._default_element_photo(),
-            }
-            if existing_element:
-                existing_element.write(vals)
-            else:
-                elements_model.create(vals)
-        _logger.info(f"Synced {len(elements_data)} elements")
+        Elements = self.env['fpl.elements'].with_context(active_test=False)
+        existing = {element.code: element for element in Elements.search([('code', '!=', False)])}
+        teams = self.env['fpl.teams']._get_teams_by_api_id()
+        element_types = self.env['fpl.element.types']._get_types_by_api_id()
+        countries = {
+            country.code: country.id
+            for country in self.env['res.country'].search([('code', 'in', list(REGION_ISO_BY_ID.values()))])
+        }
+        statuses = dict(Elements._fields['status'].selection)
 
-    
-    def download_player_avatar(self):
-        player_codes = self.env['fpl.elements'].search([('opta_code', '!=', False), ('code', '!=', False)])
-        
-        # Ensure the players_avatar directory exists
-        base_path = file_path('fantasy_premier_league/static/src/img/players_avatar')
-        if not os.path.exists(base_path):
-            os.makedirs(base_path, exist_ok=True)
-            _logger.info(f"Created directory: {base_path}")
-        
-        for player in player_codes:
-            code = player.code
-            url_image = f'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
-            
-            save_in_path = os.path.join(base_path, f'{player.code}.png')
+        vals_by_key = {}
+        for element in elements_data:
+            code = str(element['code'])
+            team = teams.get(element.get('team'))
+            element_type = element_types.get(str(element.get('element_type')))
+            status = element.get('status')
+            vals = self._fpl_filter_vals(Elements._name, element, exclude=_ELEMENT_SPECIAL_KEYS)
+            vals.update({
+                'active': True,
+                'element_id': element['id'],
+                'code': code,
+                'fpl_team_id': team.id if team else False,
+                'element_type_id': element_type.id if element_type else False,
+                'now_cost': self._fpl_tenths(element.get('now_cost')),
+                'status': status if status in statuses else False,
+                'team_join_date': self._fpl_parse_date(element.get('team_join_date')),
+                'birth_date': self._fpl_parse_date(element.get('birth_date')),
+                'region': element.get('region'),
+                'country_id': countries.get(REGION_ISO_BY_ID.get(element.get('region')), False),
+            })
+            vals_by_key[code] = vals
 
-            try:
-                download_image = requests.get(url_image, timeout=10)
-                if download_image.status_code == 200:
-                    with open(save_in_path, 'wb') as file:
-                        file.write(download_image.content)
-                    _logger.info(f"Downloaded avatar for player {player.code}")
+        elements = self._fpl_upsert(Elements, existing, vals_by_key)
+
+        # Players gone from the API, and duplicated records of a same player
+        departed = Elements.search([('active', '=', True), ('id', 'not in', [rec.id for rec in elements.values()])])
+        if departed:
+            # Element ids are re-assigned every season: free them so that API
+            # ids always resolve to a player of the current season.
+            departed.write({'active': False, 'element_id': 0})
+
+        if set(vals_by_key) - set(existing):
+            self._trigger_image_download()
+        _logger.info("Synced %s elements (%s archived)", len(elements), len(departed))
+
+    # ------------------------------------------------------------------
+    # Images (club badges, kits, player photos), stored in database
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _trigger_image_download(self):
+        """New clubs/players (e.g. a new season): fetch their images right away."""
+        cron = self.env.ref(IMAGE_CRON_XMLID, raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger()
+
+    @api.model
+    def cron_download_images(self, force=False):
+        """Download the club badges, kits and player photos that are missing.
+
+        Images are stored on the records (attachments), so this works on any
+        instance, including one whose module source is read-only. An image
+        that does not exist on the CDN is asked again after
+        ``IMAGE_RETRY_DELAY`` only.
+
+        :param bool force: download every image again (only the ones that
+            changed are written)
+        """
+        teams = self.env['fpl.teams'].search([('code', '!=', False)])
+        players = self.env['fpl.elements'].search([('code', '!=', False)])
+        logos = self._download_team_logos(teams, force)
+        shirts = self._download_team_shirts(teams, force)
+        photos = self._download_player_photos(players, force)
+        _logger.info("FPL images: %s badges, %s kits and %s player photos updated", logos, shirts, photos)
+        return logos + shirts + photos
+
+    @api.model
+    def _image_candidates(self, records, is_missing, checked_field, force):
+        """Records whose image is missing and was not looked for recently."""
+        if force:
+            return records
+        retry_before = fields.Datetime.now() - IMAGE_RETRY_DELAY
+        return records.filtered(
+            lambda rec: is_missing(rec) and (not rec[checked_field] or rec[checked_field] < retry_before)
+        )
+
+    @api.model
+    def _fetch_images(self, urls):
+        """Download ``{key: url}`` concurrently.
+
+        :return: ``{key: content}`` for the requests that got an answer;
+            ``content`` is None when the image does not exist (404). Network
+            errors are left out, so that they are retried at the next run.
+        """
+        results, errors = fetch_many({key: (lambda url=url: http_get_bytes(url)) for key, url in urls.items()})
+        for key, error in errors.items():
+            _logger.warning("Download of %s failed: %s", urls[key], error)
+        return results
+
+    @api.model
+    def _stored_checksums(self, records, field_name):
+        """``{record id: checksum}`` of a binary field, read from its attachments."""
+        if not records:
+            return {}
+        self.env.cr.execute("""
+            SELECT res_id, checksum FROM ir_attachment
+             WHERE res_model = %s AND res_field = %s AND res_id = ANY(%s)
+        """, [records._name, field_name, records.ids])
+        return dict(self.env.cr.fetchall())
+
+    @api.model
+    def _download_team_logos(self, teams, force=False):
+        """Club badges: SVG on the CDN, rendered as PNG in ``fpl.teams.photo``.
+
+        The CDN keys badges by the club ``code``, not ``team_id``
+        (badges/43.svg = Man City, whose team_id is 15). The
+        "badges-alt" variant is meant for dark backgrounds (white crests).
+        """
+        teams = self._image_candidates(teams, lambda team: not team.photo_checksum, 'logo_checked_at', force)
+        if not teams:
+            return 0
+        if cairosvg is None:
+            _logger.warning("cairosvg is not installed (pip install cairosvg): club badges cannot be downloaded")
+            return 0
+        results = self._fetch_images({team.id: TEAM_BADGE_URL.format(code=team.code) for team in teams})
+        updated = 0
+        for team in teams.filtered(lambda team: team.id in results):
+            svg = results[team.id]
+            checksum = svg and hashlib.sha1(svg).hexdigest()
+            vals = {'logo_checked_at': fields.Datetime.now()}
+            if svg and checksum != team.photo_checksum:
+                try:
+                    png = self._normalize_logo_png(cairosvg.svg2png(bytestring=svg, output_width=LOGO_SIZE))
+                except Exception as e:  # noqa: BLE001 - a broken badge must not stop the others
+                    _logger.warning("Cannot render the badge of %s: %s", team.name, e)
                 else:
-                    _logger.warning(f"Failed to download avatar for player {player.code} - Status code: {download_image.status_code}")
-            except Exception as e:
-                _logger.error(f"Error downloading avatar for player {player.code}: {str(e)}")
+                    vals.update(photo=base64.b64encode(png), photo_checksum=checksum)
+                    updated += 1
+            team.write(vals)
+        return updated
 
-    def _normalize_logo_png(self, png_bytes, size=100):
-        """Resize PNG to a fixed square canvas, preserving aspect ratio with transparent padding."""
+    @api.model
+    def _download_team_shirts(self, teams, force=False):
+        """Outfield and goalkeeper kits, shown on the pitch view."""
+        teams = self._image_candidates(
+            teams, lambda team: not (team.shirt_image and team.shirt_gkp_image), 'shirts_checked_at', force,
+        )
+        if not teams:
+            return 0
+        results = self._fetch_images({
+            (team.id, field_name): TEAM_SHIRT_URL.format(name=remote_name.format(code=team.code))
+            for team in teams
+            for field_name, remote_name in SHIRT_VARIANTS.items()
+        })
+        stored = {field_name: self._stored_checksums(teams, field_name) for field_name in SHIRT_VARIANTS}
+        updated = 0
+        for team in teams:
+            vals = {}
+            for field_name in SHIRT_VARIANTS:
+                key = (team.id, field_name)
+                if key not in results:
+                    continue
+                vals['shirts_checked_at'] = fields.Datetime.now()
+                content = results[key]
+                if content and hashlib.sha1(content).hexdigest() != stored[field_name].get(team.id):
+                    vals[field_name] = base64.b64encode(content)
+                    updated += 1
+            if vals:
+                team.write(vals)
+        return updated
+
+    @api.model
+    def _download_player_photos(self, players, force=False):
+        players = self._image_candidates(players, lambda player: not player.photo_checksum, 'images_checked_at', force)
+        if not players:
+            return 0
+        results = self._fetch_images({player.id: PLAYER_PHOTO_URL.format(code=player.code) for player in players})
+        updated = 0
+        for player in players.filtered(lambda player: player.id in results):
+            content = results[player.id]
+            checksum = content and hashlib.sha1(content).hexdigest()
+            vals = {'images_checked_at': fields.Datetime.now()}
+            if content and checksum != player.photo_checksum:
+                vals.update(photo=base64.b64encode(content), photo_checksum=checksum)
+                updated += 1
+            player.write(vals)
+        return updated
+
+    @api.model
+    def _normalize_logo_png(self, png_bytes, size=LOGO_SIZE):
+        """Square transparent canvas, the badge centered with its aspect ratio kept."""
         img = Image.open(io.BytesIO(png_bytes)).convert('RGBA')
         img.thumbnail((size, size), Image.LANCZOS)
         canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        offset = ((size - img.width) // 2, (size - img.height) // 2)
-        canvas.paste(img, offset, img)
+        canvas.paste(img, ((size - img.width) // 2, (size - img.height) // 2), img)
         output = io.BytesIO()
-        canvas.save(output, format='PNG')
+        canvas.save(output, format='PNG', optimize=True)
         return output.getvalue()
-
-    def download_team_logo(self):
-        """Download team badges as SVG (kept as the canonical static asset for
-        direct URL/background-image usage) and rasterize a PNG copy so the
-        existing `_get_photo_png`/`_sync_teams_data` flow keeps feeding the
-        `fpl.teams.photo` Image field without any changes to that flow.
-
-        Note: the FPL CDN keys badge files by the club's `code` field, not by
-        `team_id` (verified: badges-alt/43.svg = Man City, whose team_id is 15).
-        """
-        if cairosvg is None:
-            _logger.error("cairosvg is not installed - cannot rasterize team logos")
-            raise UserError(_("Missing dependency 'cairosvg'. Install it (pip install cairosvg) to enable team logo download."))
-
-        teams = self.env['fpl.teams'].search([('code', '!=', False)])
-
-        base_path = file_path('fantasy_premier_league/static/src/img/teams_logo')
-        if not os.path.exists(base_path):
-            os.makedirs(base_path, exist_ok=True)
-            _logger.info(f"Created directory: {base_path}")
-
-        for team in teams:
-            svg_path = os.path.join(base_path, f'{team.code}.svg')
-            png_path = os.path.join(base_path, f'{team.code}.png')
-
-            url_image = f'https://resources.premierleague.com/premierleague25/badges-alt/{team.code}.svg'
-
-            try:
-                download_image = requests.get(url_image, timeout=10)
-                if download_image.status_code == 200:
-                    svg_content = download_image.content
-                    with open(svg_path, 'wb') as file:
-                        file.write(svg_content)
-
-                    png_content = cairosvg.svg2png(bytestring=svg_content)
-                    png_content = self._normalize_logo_png(png_content)
-                    with open(png_path, 'wb') as file:
-                        file.write(png_content)
-
-                    _logger.info(f"Downloaded logo for team code {team.code}")
-                else:
-                    _logger.warning(f"Failed to download logo for team code {team.code} - Status code: {download_image.status_code}")
-            except Exception as e:
-                _logger.error(f"Error downloading logo for team code {team.code}: {str(e)}")
-
-    def download_team_shirts(self):
-        """Download outfield and goalkeeper shirt kits per team.
-
-        Note: like the badge CDN, shirt files are keyed by the club's `code`
-        field, not `team_id` (verified: shirt_43-110.webp = Man City's kit,
-        whose team_id is 15; shirt_15-110.webp returns 404).
-
-        Only the 110px variant is downloaded - it matches the resolution of
-        the shirt images already bundled with the module and consumed by the
-        pitch-view formation template. The 66px variant is FPL's smaller
-        list/dropdown icon size and isn't used anywhere in this module.
-        """
-        teams = self.env['fpl.teams'].search([('code', '!=', False)])
-
-        base_path = file_path('fantasy_premier_league/static/src/img/shirt')
-        if not os.path.exists(base_path):
-            os.makedirs(base_path, exist_ok=True)
-            _logger.info(f"Created directory: {base_path}")
-
-        # (label, remote filename template on the FPL CDN, local filename template expected by the pitch view templates)
-        shirt_variants = [
-            ('outfield', 'shirt_{code}-110.webp', 'shirt_{code}.webp'),
-            ('goalkeeper', 'shirt_{code}_1-110.webp', 'shirt_{code}_GKP.webp'),
-        ]
-
-        for team in teams:
-            for kind, remote_tpl, local_tpl in shirt_variants:
-                local_name = local_tpl.format(code=team.code)
-                save_in_path = os.path.join(base_path, local_name)
-
-                remote_name = remote_tpl.format(code=team.code)
-                url_image = f'https://fantasy.premierleague.com/dist/img/shirts/standard/{remote_name}'
-
-                try:
-                    download_image = requests.get(url_image, timeout=10)
-                    if download_image.status_code == 200:
-                        with open(save_in_path, 'wb') as file:
-                            file.write(download_image.content)
-                        _logger.info(f"Downloaded {kind} shirt for team code {team.code}")
-                    else:
-                        _logger.warning(f"Failed to download {kind} shirt for team code {team.code} - Status code: {download_image.status_code}")
-                except Exception as e:
-                    _logger.error(f"Error downloading {kind} shirt for team code {team.code}: {str(e)}")

@@ -1,124 +1,173 @@
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError
-from datetime import datetime, timedelta
-
-from .master_data import REGIONS
-from .fpl_api_mixin import FPLApiMixin
-from ..services.fpl_api_client import FPLApiClient, FPLApiException
+import json
 import logging
+import os
+import subprocess
+import sys
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import psycopg2
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+from ..services.fpl_api_client import FPLApiClient, FPLApiException
+from .master_data import REGIONS
 
 _logger = logging.getLogger(__name__)
 
-class FPLManagerTeam(models.Model, FPLApiMixin):
-    _name = 'fpl.manager.team'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+REGION_ISO_BY_ID = {region['id']: region['iso_code_short'] for region in REGIONS}
+# Opening a manager form syncs it, but not more often than that
+SYNC_ON_OPEN_THROTTLE = timedelta(minutes=2)
+CHIP_STATES = [('available', 'Available'), ('used', 'Used'), ('unavailable', 'Not available')]
+CHIP_STATE_FIELDS = {
+    'wildcard': 'chip_wildcard_state',
+    'freehit': 'chip_free_hit_state',
+    'bboost': 'chip_bench_boost_state',
+    '3xc': 'chip_triple_captain_state',
+}
+TOKEN_EXPIRED_MESSAGE = ("The FPL login has expired, only public data was synced. Log in again: run "
+                         "docker/fpl-login.sh %(manager)s on the server, or click 'Update FPL Token' and "
+                         "paste a new refresh token.")
+TOKEN_FIELDS = ['refresh_token', 'access_token', 'access_token_expiry', 'browser_session']
+# Postgres advisory lock namespace ('FPL') for the token refresh of a manager
+TOKEN_LOCK_NAMESPACE = 0x46504C
+TOKEN_LOCK_TIMEOUT = '150s'
+# Browser session (Premier League SSO cookies) used to get new tokens, see
+# scripts/fpl_browser_auth.py and docker/fpl-login.sh
+BROWSER_AUTH_SCRIPT = str(Path(__file__).resolve().parent.parent / 'scripts' / 'fpl_browser_auth.py')
+BROWSER_AUTH_TIMEOUT = 150
+BROWSER_SESSION_DIR_PARAM = 'fantasy_premier_league.browser_session_dir'
+DEFAULT_BROWSER_SESSION_DIR = '/var/lib/odoo/alobo_profiles/fpl'
 
+
+class FPLManagerTeam(models.Model):
+    _name = 'fpl.manager.team'
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'fpl.api.mixin']
     _description = 'FPL Manager Team'
-    
-    manager_id = fields.Integer(string='Manager ID')
+    _order = 'name, id'
+
+    manager_id = fields.Integer(string='Manager ID', index=True)
     # FPL OIDC tokens: the refresh token rotates on every exchange, see _get_fpl_access_token
     refresh_token = fields.Char(string='FPL Refresh Token', groups='base.group_system', copy=False)
     access_token = fields.Char(string='FPL Access Token', groups='base.group_system', copy=False)
     access_token_expiry = fields.Datetime(string='Access Token Expiry', groups='base.group_system', copy=False)
     has_fpl_token = fields.Boolean(string='FPL Token Connected', compute='_compute_has_fpl_token')
-    #Manager Data
+    # Browser state (Premier League SSO cookies) able to start a new token
+    # chain without asking for the password again, see _fpl_browser_login
+    browser_session = fields.Text(string='FPL Browser Session', groups='base.group_system', copy=False)
+    browser_session_date = fields.Datetime(string='Browser Session Updated', readonly=True, copy=False)
+    last_sync_date = fields.Datetime(string='Last Sync', readonly=True, copy=False)
+    # Manager Data
     manager_data_id = fields.Integer(string='Manager Data ID')
     date_of_birth = fields.Date(string='Date of Birth', tracking=True)
-    default_event = fields.Integer(string='Default Event', tracking=True)
-    dirty = fields.Boolean(string='Dirty', tracking=True)
+    default_event = fields.Integer(string='Default Event')
+    dirty = fields.Boolean(string='Dirty')
     first_name = fields.Char(string='First Name', tracking=True)
     last_name = fields.Char(string='Last Name', tracking=True)
     full_name = fields.Char(string='Full Name', tracking=True)
     email = fields.Char(string='Email', tracking=True)
-    gender = fields.Selection([('M', 'Male'), ('F', 'Female' )], string='Gender', tracking=True)
+    gender = fields.Selection([('M', 'Male'), ('F', 'Female')], string='Gender', tracking=True)
     manger_data_id = fields.Integer(string='ID')
-    region = fields.Char(string='Region', tracking=True)
+    region = fields.Char(string='Region')
     country_id = fields.Many2one('res.country', string='Country', tracking=True)
-    entry_email = fields.Boolean(string='Entry Email', tracking=True)
-    entry_language = fields.Char(string='Entry Language', tracking=True)
-    sso_id = fields.Char(string='SSO ID', tracking=True)
-    #Manager Entry Summary
-    joined_time = fields.Datetime(string='Joined Time', tracking=True)
-    started_event = fields.Integer(string='Started Event', tracking=True)
+    entry_email = fields.Boolean(string='Entry Email')
+    entry_language = fields.Char(string='Entry Language')
+    sso_id = fields.Char(string='SSO ID')
+    # Manager Entry Summary
+    joined_time = fields.Datetime(string='Joined Time')
+    started_event = fields.Integer(string='Started Event')
     favourite_team = fields.Many2one('fpl.teams', string='Favourite Team', tracking=True)
-    player_first_name = fields.Char(string='Player First Name', tracking=True)
-    player_last_name = fields.Char(string='Player Last Name', tracking=True)
-    player_region_id = fields.Char(string='Player Region ID', tracking=True)
-    player_region_name = fields.Char(string='Player Region Name', tracking=True)
-    player_region_iso_code_short = fields.Char(string='Player Region ISO Code Short', tracking=True)
-    player_region_iso_code_long = fields.Char(string='Player Region ISO Code Long', tracking=True)
-    years_active = fields.Integer(string='Years Active', tracking=True)
+    player_first_name = fields.Char(string='Player First Name')
+    player_last_name = fields.Char(string='Player Last Name')
+    player_region_id = fields.Char(string='Player Region ID')
+    player_region_name = fields.Char(string='Player Region Name')
+    player_region_iso_code_short = fields.Char(string='Player Region ISO Code Short')
+    player_region_iso_code_long = fields.Char(string='Player Region ISO Code Long')
+    years_active = fields.Integer(string='Years Active')
     summary_overall_points = fields.Integer(string='Summary Overall Points', tracking=True)
     summary_overall_rank = fields.Integer(string='Summary Overall Rank', tracking=True)
     summary_event_points = fields.Integer(string='Current Gameweek points', tracking=True)
     summary_event_rank = fields.Integer(string='Current Gameweek Rank', tracking=True)
     current_event = fields.Integer(string='Current Gameweek', tracking=True)
     name = fields.Char(string='Name', tracking=True)
-    name_change_blocked = fields.Boolean(string='Name Change Blocked', tracking=True)
-    kits = fields.Char(string='Kits', tracking=True)
-    last_deadline_bank = fields.Integer(string='Last Deadline Bank', tracking=True)
-    last_deadline_value = fields.Integer(string='Last Deadline Value', tracking=True)
-    last_deadline_total_transfers = fields.Integer(string='Last Deadline Total Transfers', tracking=True)
-    club_badge_src = fields.Char(string='Club Badge Src', tracking=True)
-    league_classic_ids = fields.One2many('fpl.leagues', 'manager_id', string='League Classic IDs', domain=[('type', '=', 'classic')])
-    league_h2h_ids = fields.One2many('fpl.leagues', 'manager_id', string='League H2H IDs', domain=[('type', '=', 'h2h')])
+    name_change_blocked = fields.Boolean(string='Name Change Blocked')
+    kits = fields.Char(string='Kits')
+    last_deadline_bank = fields.Float(string='Last Deadline Bank')
+    last_deadline_value = fields.Float(string='Last Deadline Value')
+    last_deadline_total_transfers = fields.Integer(string='Last Deadline Total Transfers')
+    club_badge_src = fields.Char(string='Club Badge Src')
+    league_classic_ids = fields.One2many('fpl.leagues', 'manager_id', string='League Classic IDs',
+                                         domain=[('type', '=', 'classic')])
+    league_h2h_ids = fields.One2many('fpl.leagues', 'manager_id', string='League H2H IDs',
+                                     domain=[('type', '=', 'h2h')])
     pick_ids = fields.One2many('fpl.picks', 'manager_id', string='Element IDs')
     manager_chip_ids = fields.One2many('fpl.manager.chips', 'manager_id', string='Manager Chips')
-    picks_last_updated = fields.Datetime(string='Picks Last Updated', tracking=True)
+    picks_last_updated = fields.Datetime(string='Picks Last Updated')
 
-    #Transfer Info
+    # Transfer Info
     cost = fields.Integer(string='Cost', tracking=True)
-    status = fields.Char(string='Status', tracking=True)
+    status = fields.Char(string='Status')
     limit = fields.Integer(string='Transfers Limit', tracking=True)
     made = fields.Float(string='Transfers Made', tracking=True)
     bank = fields.Float(string='In the Bank', tracking=True)
     value = fields.Float(string='Squad Value', tracking=True)
-    status_for_entry = fields.Selection([('available', 'Available'), ('played', 'Played'), ('used', 'Used'), ('unavailable', 'Unavailable')], string='Status for Entry')
-    
-    used_bench_boost = fields.Boolean(compute='_computed_used_chips')
-    used_wildcard = fields.Boolean(compute='_computed_used_chips')
-    used_free_hit = fields.Boolean(compute='_computed_used_chips')
-    used_triple_captain = fields.Boolean(compute='_computed_used_chips')
+    status_for_entry = fields.Selection([('available', 'Available'), ('played', 'Played'), ('used', 'Used'),
+                                         ('unavailable', 'Unavailable')], string='Status for Entry')
 
-    #Entry History
+    chip_wildcard_state = fields.Selection(CHIP_STATES, string='Wildcard', compute='_compute_chip_states')
+    chip_free_hit_state = fields.Selection(CHIP_STATES, string='Free Hit', compute='_compute_chip_states')
+    chip_bench_boost_state = fields.Selection(CHIP_STATES, string='Bench Boost', compute='_compute_chip_states')
+    chip_triple_captain_state = fields.Selection(CHIP_STATES, string='Triple Captain', compute='_compute_chip_states')
+
+    # Entry History
     entry_history_ids = fields.One2many('fpl.entry.history', 'manager_id', string='Entry History')
     entry_past_ids = fields.One2many('fpl.past', 'manager_id', string='Entry Past')
 
+    _sql_constraints = [
+        ('manager_id_uniq', 'unique(manager_id)', 'This FPL manager already exists.'),
+    ]
+
+    @api.depends('refresh_token', 'browser_session', 'browser_session_date')
     def _compute_has_fpl_token(self):
         for rec in self:
-            rec.has_fpl_token = bool(rec.sudo().refresh_token)
+            manager = rec.sudo()
+            rec.has_fpl_token = bool(
+                manager.refresh_token or manager.browser_session or rec._get_new_browser_session_file()
+            )
 
-    @api.depends('manager_chip_ids')
-    def _computed_used_chips(self):
+    @api.depends('manager_chip_ids.status_for_entry', 'manager_chip_ids.chip_id.name')
+    def _compute_chip_states(self):
         for rec in self:
-            if rec.manager_chip_ids:
-                rec.used_bench_boost = False if any(chip.is_bench_boost and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_wildcard = False if any(chip.is_wildcard and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_free_hit = False if any(chip.is_free_hit and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
-                rec.used_triple_captain = False if any(chip.is_triple_captain and chip.status_for_entry != 'available' for chip in rec.manager_chip_ids) else True
+            for chip_name, field_name in CHIP_STATE_FIELDS.items():
+                statuses = set(rec.manager_chip_ids.filtered(lambda c: c.name == chip_name).mapped('status_for_entry'))
+                if 'available' in statuses:
+                    rec[field_name] = 'available'
+                elif statuses & {'played', 'used'}:
+                    rec[field_name] = 'used'
+                else:
+                    rec[field_name] = 'unavailable'
 
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
 
     def action_open_entry_history(self):
-        action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_manager_team_history_wizard_action')
-        action.update({
-                'context': {
-                    'default_entry_history_ids': self.entry_history_ids.ids,
-                    'default_entry_past_ids': self.entry_past_ids.ids,
-                },
-            }
-        )
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'fantasy_premier_league.fpl_manager_team_history_wizard_action')
+        action['context'] = {
+            'default_entry_history_ids': self.entry_history_ids.ids,
+            'default_entry_past_ids': self.entry_past_ids.ids,
+        }
         return action
 
     def action_verify_manager_data(self):
         """Open the wizard to (re)connect the FPL token of this manager"""
         self.ensure_one()
         action = self.env['ir.actions.actions']._for_xml_id('fantasy_premier_league.fpl_manager_team_wizard_action')
-        action.update({
-                'context': {
-                    'default_manager_id':  self.manager_id, 
-                    'is_readonly': True,    
-                },
-        })
+        action['context'] = {'default_manager_id': self.manager_id, 'is_readonly': True}
         return action
 
     def action_sync_manager_data(self):
@@ -137,10 +186,17 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         }
 
     def action_sync_on_open(self):
-        """Called by the form view each time a record is opened: refresh its data from the FPL API.
-        Falls back to public data when the stored token can no longer be refreshed, so that
-        opening the record never asks for credentials. Returns a warning message, or False."""
+        """Called by the form view each time a record is opened: refresh its data
+        from the FPL API (at most every ``SYNC_ON_OPEN_THROTTLE``).
+
+        Falls back to public data when the stored token can no longer be
+        refreshed, so that opening the record never asks for credentials.
+
+        :return: a warning message, or False
+        """
         self.ensure_one()
+        if self.last_sync_date and fields.Datetime.now() - self.last_sync_date < SYNC_ON_OPEN_THROTTLE:
+            return False
         public_only = False
         warning = False
         if self.has_fpl_token:
@@ -148,10 +204,13 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                 self._get_fpl_access_token()
             except UserError:
                 public_only = True
-                warning = _("FPL token expired or revoked, only public data was synced. "
-                            "Please click 'Update FPL Token' and paste a new refresh token.")
+                warning = _(TOKEN_EXPIRED_MESSAGE, manager=self.manager_id)
         self.sync_manager_data(manager_id=self.manager_id, public_only=public_only)
         return warning
+
+    # ------------------------------------------------------------------
+    # FPL tokens
+    # ------------------------------------------------------------------
 
     @api.model
     def _fpl_exchange_refresh_token(self, refresh_token):
@@ -159,7 +218,7 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         try:
             return FPLApiClient.refresh_access_token(refresh_token, client_id=client_id)
         except FPLApiException as e:
-            raise UserError(_("%s\nPlease click 'Update FPL Token' and paste a new refresh token.") % str(e))
+            raise UserError(_("%s\nPlease click 'Update FPL Token' and paste a new refresh token.", e)) from e
 
     def _store_fpl_tokens(self, token_data):
         self.ensure_one()
@@ -172,107 +231,225 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
         # a later sync error cannot roll back the rotated one.
         self.env.cr.commit()
 
-    def _get_fpl_access_token(self):
-        """Return a valid access token, refreshing it with the stored refresh token when needed"""
-        self.ensure_one()
+    def _get_valid_access_token(self):
         manager = self.sudo()
         if manager.access_token and manager.access_token_expiry \
                 and manager.access_token_expiry > fields.Datetime.now() + timedelta(minutes=2):
             return manager.access_token
-        if not manager.refresh_token:
-            raise UserError(_("No FPL token for manager %s. Please click 'Update FPL Token'.") % self.manager_id)
-        token_data = self._fpl_exchange_refresh_token(manager.refresh_token)
-        self._store_fpl_tokens(token_data)
-        return token_data['access_token']
+        return False
+
+    @contextmanager
+    def _fpl_token_lock(self):
+        """Only one process refreshes the tokens of a manager at a time.
+
+        Refresh tokens rotate: two processes (e.g. the cron and a user opening
+        the form) refreshing with the same token make FPL see a re-used token,
+        which revokes the whole chain. The lock lives in its own transaction,
+        so it is released even if the caller's transaction fails.
+        """
+        self.ensure_one()
+        with self.pool.cursor() as lock_cr:
+            lock_cr.execute(f"SET LOCAL lock_timeout = '{TOKEN_LOCK_TIMEOUT}'")
+            try:
+                lock_cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", [TOKEN_LOCK_NAMESPACE, self.id])
+            except psycopg2.errors.LockNotAvailable as e:
+                raise UserError(_("The FPL token of manager %s is being refreshed by another process, "
+                                  "please try again in a moment.", self.manager_id)) from e
+            yield
+
+    def _get_fpl_access_token(self):
+        """Return a valid access token, getting a new one when needed: with
+        the refresh token, or else with the browser session."""
+        self.ensure_one()
+        token = self._get_valid_access_token()
+        if token:
+            return token
+        with self._fpl_token_lock():
+            # Another process may have refreshed the tokens while we waited
+            # for the lock: a new transaction sees what it committed.
+            self.env.cr.commit()
+            self.sudo().invalidate_recordset(TOKEN_FIELDS)
+            token = self._get_valid_access_token()
+            if token:
+                return token
+            token_data = self._fpl_new_tokens()
+            self._store_fpl_tokens(token_data)
+            return token_data['access_token']
+
+    def _fpl_new_tokens(self):
+        """Refresh the tokens; when FPL rejects the refresh token (expired or
+        revoked), start a new token chain from the browser session.
+
+        Credentials that FPL rejects are forgotten, and the user is told once.
+        """
+        manager = self.sudo()
+        client_id = self.env['ir.config_parameter'].sudo().get_param('fantasy_premier_league.oidc_client_id')
+        rejected = False
+        if manager.refresh_token:
+            try:
+                return FPLApiClient.refresh_access_token(manager.refresh_token, client_id=client_id)
+            except FPLApiException as e:
+                if e.status_code not in (400, 401):
+                    # Network error, FPL down...: keep the token for the next try
+                    raise UserError(_("Could not refresh the FPL token: %s", e)) from e
+                _logger.warning("FPL refresh token of manager %s rejected: %s", self.manager_id, e)
+                manager.write({'refresh_token': False, 'access_token': False, 'access_token_expiry': False})
+                rejected = True
+
+        status, token_data = self._fpl_browser_login()
+        if token_data:
+            _logger.info("New FPL token chain for manager %s from the browser session", self.manager_id)
+            return token_data
+        if rejected or status == 'login_required':
+            self.message_post(body=_(TOKEN_EXPIRED_MESSAGE, manager=self.manager_id))
+            # Committed so that it survives the UserError raised below
+            self.env.cr.commit()
+        raise UserError(_(TOKEN_EXPIRED_MESSAGE, manager=self.manager_id))
+
+    def _get_browser_session_dir(self):
+        return self.env['ir.config_parameter'].sudo().get_param(BROWSER_SESSION_DIR_PARAM, DEFAULT_BROWSER_SESSION_DIR)
+
+    def _get_new_browser_session_file(self):
+        """The session file saved by docker/fpl-login.sh for this manager, when
+        it is newer than the session already in database."""
+        self.ensure_one()
+        if not self.manager_id:
+            return False
+        path = os.path.join(self._get_browser_session_dir(), f'fpl_{self.manager_id}.json')
+        try:
+            mtime = datetime.fromtimestamp(os.path.getmtime(path), tz=timezone.utc).replace(tzinfo=None)
+            # Odoo datetimes have no microseconds
+            mtime = mtime.replace(microsecond=0)
+        except OSError:
+            return False
+        if self.browser_session_date and mtime <= self.browser_session_date:
+            return False
+        return path
+
+    def _import_browser_session_file(self):
+        path = self._get_new_browser_session_file()
+        if not path:
+            return
+        try:
+            with open(path, encoding='utf-8') as session_file:
+                state = json.load(session_file)
+        except (OSError, ValueError) as e:
+            _logger.warning("Unreadable FPL browser session %s: %s", path, e)
+            return
+        self.sudo().write({'browser_session': json.dumps(state), 'browser_session_date': fields.Datetime.now()})
+        _logger.info("FPL browser session of manager %s imported from %s", self.manager_id, path)
+
+    def _fpl_browser_login(self):
+        """Get a new token chain with the browser session (silent OIDC login).
+
+        :return: ``(status, token_data)``; status is 'ok', 'login_required'
+            (the SSO session expired: it is forgotten) or 'no_session'
+        """
+        self.ensure_one()
+        self._import_browser_session_file()
+        manager = self.sudo()
+        if not manager.browser_session:
+            return 'no_session', None
+        client_id = self.env['ir.config_parameter'].sudo().get_param('fantasy_premier_league.oidc_client_id')
+        result = self._run_browser_auth({
+            'storage_state': json.loads(manager.browser_session),
+            'client_id': client_id or None,
+        })
+        status = result.get('status')
+        if status == 'login_required':
+            _logger.warning("FPL browser session of manager %s expired", self.manager_id)
+            manager.write({'browser_session': False})
+            return status, None
+        if status != 'ok':
+            if result.get('storage_state'):
+                # The SSO cookies rotate on use: keep the latest ones
+                manager.write({'browser_session': json.dumps(result['storage_state'])})
+                self.env.cr.commit()
+            raise UserError(_("FPL login with the browser session failed: %s", result.get('message')))
+        # The SSO cookies rotate on every use (the previous ones no longer
+        # work): saved and committed first, whatever happens next.
+        manager.write({
+            'browser_session': json.dumps(result.get('storage_state') or json.loads(manager.browser_session)),
+            'browser_session_date': fields.Datetime.now(),
+        })
+        self.env.cr.commit()
+        try:
+            token_data = FPLApiClient.exchange_authorization_code(
+                result['code'], result['code_verifier'], result['redirect_uri'], client_id=client_id,
+            )
+        except FPLApiException as e:
+            raise UserError(_("FPL login with the browser session failed: %s", e)) from e
+        return status, token_data
+
+    @api.model
+    def _run_browser_auth(self, payload):
+        """Run scripts/fpl_browser_auth.py --silent in a separate process.
+
+        Playwright cannot run inside an Odoo worker (gevent / prefork break
+        Chromium's process management).
+        """
+        try:
+            process = subprocess.run(
+                [sys.executable, BROWSER_AUTH_SCRIPT, '--silent'],
+                input=json.dumps(payload), capture_output=True, text=True, timeout=BROWSER_AUTH_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            return {'status': 'error', 'message': f'timeout after {BROWSER_AUTH_TIMEOUT}s'}
+        except OSError as e:
+            return {'status': 'error', 'message': str(e)}
+        try:
+            return json.loads(process.stdout)
+        except ValueError:
+            _logger.error("fpl_browser_auth.py failed (exit %s): %s", process.returncode, process.stderr[-2000:])
+            return {'status': 'error', 'message': f'browser script failed (exit {process.returncode})'}
+
+    # ------------------------------------------------------------------
+    # Sync
+    # ------------------------------------------------------------------
 
     @api.model
     def sync_manager_data(self, refresh_token=None, manager_id=None, public_only=False):
+        """Sync a manager from the FPL API, creating the record when needed.
+
+        Public endpoints (entry summary, history, leagues) only need the
+        manager id. Private endpoints (/me/, /my-team/) use a newly pasted
+        refresh token, or the token stored on the record; they are skipped
+        when no token is available.
+
+        :return: the synced manager
         """
-        Sync manager data from FPL API and create/update the record.
+        manager = self.browse()
+        if manager_id:
+            try:
+                manager = self.search([('manager_id', '=', int(manager_id))], limit=1)
+            except ValueError as e:
+                raise UserError(_("The manager ID must be a number.")) from e
 
-        Public endpoints (entry summary, history, leagues) only need the manager id.
-        Private endpoints (/me/, /my-team/) use a newly pasted refresh token, or the
-        token stored on the record; they are skipped when no token is available.
-        """
-        try:
-            manager_team = self.browse()
-            if manager_id:
-                manager_team = self.search([('manager_id', '=', int(manager_id))], limit=1)
+        token_data = access_token = False
+        if refresh_token:
+            token_data = self._fpl_exchange_refresh_token(refresh_token.strip())
+            access_token = token_data['access_token']
+        elif manager and not public_only and manager.has_fpl_token:
+            access_token = manager._get_fpl_access_token()
 
-            token_data = False
-            access_token = False
-            if refresh_token:
-                token_data = self._fpl_exchange_refresh_token(refresh_token.strip())
-                access_token = token_data['access_token']
-            elif manager_team and not public_only and manager_team.has_fpl_token:
-                access_token = manager_team._get_fpl_access_token()
+        player_data = {}
+        if access_token:
+            try:
+                player_data = (self.sync_authenticated_data('get_manager_data', access_token) or {}).get('player') or {}
+            except FPLApiException as e:
+                raise self._fpl_user_error(_("Failed to get the FPL manager data"), e) from e
 
-            x_api_authorization = f'Bearer {access_token}' if access_token else None
-            manager_data = {}
-            if access_token:
-                manager_data = self.sync_authenticated_data('get_manager_data', None, x_api_authorization)
-                if not manager_data:
-                    raise UserError(_("No manager data received from API"))
+        entry = player_data.get('entry') or manager_id
+        if not entry:
+            raise UserError(_("Could not determine the FPL manager ID. Please provide it."))
+        entry = int(entry)
+        manager = self.search([('manager_id', '=', entry)], limit=1) or self.create({'manager_id': entry})
+        if token_data:
+            manager._store_fpl_tokens(token_data)
 
-            api_manager_id = None
-            if 'player' in manager_data and isinstance(manager_data['player'], dict):
-                api_manager_id = str(manager_data['player'].get('entry'))
-            elif 'entry' in manager_data:
-                api_manager_id = str(manager_data.get('entry'))
-            elif manager_id:
-                api_manager_id = str(manager_id)
-            
-            if not api_manager_id:
-                raise UserError(_("Could not extract manager_id from API response"))
-            
-            manager_team = self.search([('manager_id', '=', api_manager_id)], limit=1)
-            if not manager_team:
-                manager_team = self.create({'manager_id': api_manager_id})
-                _logger.info(f"Created new manager team record for ID: {api_manager_id}")
-            else:
-                _logger.info(f"Found existing manager team record for ID: {api_manager_id}")
-            if token_data:
-                manager_team._store_fpl_tokens(token_data)
-            
-            entry_summary = manager_team.sync_from_fpl_api(
-                'get_entry_summary', 
-                api_manager_id,
-            )
-            entry_history_data = manager_team.sync_from_fpl_api(
-                'get_entry_history',
-                api_manager_id,
-            )
-            if access_token:
-                manager_team_data = manager_team.sync_authenticated_data(
-                    'get_manager_team',
-                    None,
-                    x_api_authorization,
-                    api_manager_id
-                )
-                manager_team._update_from_manager_data(manager_data.get('player', {}))
-            manager_team._update_from_entry_summary(entry_summary, manager_team.id)
-            if access_token:
-                manager_team._update_from_manager_team(manager_team_data, manager_team.id)
-            manager_team._update_from_entry_histroy(entry_history_data, manager_team.id)
-            
-            leauge_ids = self.env['fpl.leagues'].search([('manager_id', '=', manager_team.id)])
-            if leauge_ids:
-                league_phase_mapping = {leauge: leauge.active_phases_ids for leauge in leauge_ids if leauge.active_phases_ids}
-                if league_phase_mapping:
-                    self._update_league_standings(league_phase_mapping)
-
-
-            _logger.info(f"Successfully synced data for manager {api_manager_id} (private data: {bool(access_token)})")
-            return manager_team
-                
-        except UserError:
-            raise
-        except FPLApiException as e:
-            _logger.error(f"Failed to sync manager data: {str(e)}")
-            raise UserError(f"Failed to sync manager data: {str(e)}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during sync: {str(e)}")
-            raise UserError(f"Unexpected error during sync: {str(e)}")
+        manager._sync_from_api(access_token, player_data)
+        _logger.info("Synced FPL manager %s (private data: %s)", entry, bool(access_token))
+        return manager
 
     @api.model
     def cron_sync_manager_data(self):
@@ -284,467 +461,316 @@ class FPLManagerTeam(models.Model, FPLApiMixin):
                     # Refresh (and commit the rotated token) outside the savepoint below
                     manager._get_fpl_access_token()
                 except UserError as e:
+                    # A rejected token is cleared (and reported) by _get_fpl_access_token
                     public_only = True
-                    _logger.warning(f"FPL token refresh failed for manager {manager.manager_id}: {str(e)}")
-                    manager.message_post(body=_("FPL token expired or revoked, only public data was synced. "
-                                                "Please click 'Update FPL Token' and paste a new refresh token."))
+                    _logger.warning("FPL token refresh failed for manager %s: %s", manager.manager_id, e)
+            # No savepoint here: the token rotation commits, which would break it.
+            # Everything before this manager is already committed.
             try:
-                with self.env.cr.savepoint():
-                    self.sync_manager_data(manager_id=manager.manager_id, public_only=public_only)
+                self.sync_manager_data(manager_id=manager.manager_id, public_only=public_only)
                 self.env.cr.commit()
-            except Exception as e:
-                _logger.error(f"Cron sync failed for manager {manager.manager_id}: {str(e)}")
+            except Exception:  # noqa: BLE001 - one manager must not block the others
+                self.env.cr.rollback()
+                _logger.exception("Cron sync failed for manager %s", manager.manager_id)
 
-    def _update_from_entry_histroy(self, data, manager_id):
-        existing_history = {h.event_id.event_id: h for h in self.env['fpl.entry.history'].search([('manager_id', '=', manager_id)])}
-        existing_past = {p.season_name: p for p in self.env['fpl.past'].search([('manager_id', '=', manager_id)])}
-        
-        event_ids = [history.get('event') for history in data.get('current', [])]
-        events_dict = {e.event_id: e for e in self.env['fpl.events'].search([('event_id', 'in', event_ids)])}
-        
-        history_to_create = []
-        history_to_update = []
-        current_history_events = set()
-        
-        for history in data.get('current', []):
-            event_id = history.get('event')
-            current_history_events.add(event_id)
-            event_record = events_dict.get(event_id)
-            
-            if not event_record:
+    def _sync_from_api(self, access_token, player_data):
+        """Fetch every endpoint of the manager concurrently, then store the data."""
+        self.ensure_one()
+        calls = {
+            'summary': ('get_entry_summary', (self.manager_id,)),
+            'history': ('get_entry_history', (self.manager_id,)),
+        }
+        if access_token:
+            calls['my_team'] = ('get_manager_team', (self.manager_id,))
+        results, errors = self._fpl_fetch_many(calls, access_token=access_token)
+        if 'summary' in errors:
+            raise self._fpl_user_error(_("Failed to sync manager data"), errors['summary']) from errors['summary']
+        for key, error in errors.items():
+            _logger.warning("FPL manager %s: '%s' could not be fetched: %s", self.manager_id, key, error)
+
+        summary = results.get('summary') or {}
+        my_team = results.get('my_team') or {}
+        vals = {'last_sync_date': fields.Datetime.now()}
+        vals.update(self._prepare_manager_data_vals(player_data))
+        vals.update(self._prepare_entry_summary_vals(summary))
+        vals.update(self._prepare_manager_team_vals(my_team))
+        changed = self._fpl_changed_vals(self, vals)
+        if changed:
+            self.write(changed)
+
+        leagues = summary.get('leagues') or {}
+        self._sync_leagues({'classic': leagues.get('classic') or [], 'h2h': leagues.get('h2h') or []})
+        if 'history' in results:
+            self._sync_entry_history(results['history'] or {})
+        if my_team:
+            self._sync_manager_chips(my_team.get('chips') or [])
+            self._sync_manager_picks(my_team.get('picks') or [])
+        self._sync_league_standings()
+
+    def _prepare_manager_data_vals(self, data):
+        """Values from the private /me/ endpoint"""
+        if not data:
+            return {}
+        gender = data.get('gender')
+        country = self.env['res.country'].search(
+            [('code', '=', REGION_ISO_BY_ID.get(data.get('region')))], limit=1,
+        ) if data.get('region') else self.env['res.country']
+        return {
+            'default_event': data.get('default_event'),
+            'dirty': bool(data.get('dirty')),
+            'date_of_birth': self._fpl_parse_date(data.get('date_of_birth')),
+            'first_name': data.get('first_name'),
+            'last_name': data.get('last_name'),
+            'full_name': f"{data.get('first_name') or ''} {data.get('last_name') or ''}".strip(),
+            'email': data.get('email'),
+            'gender': gender if gender in dict(self._fields['gender'].selection) else False,
+            'manager_data_id': data.get('id'),
+            'region': data.get('region'),
+            'country_id': country.id,
+            'entry_email': bool(data.get('entry_email')),
+            'entry_language': data.get('entry_language'),
+            'sso_id': data.get('sso_id'),
+        }
+
+    def _prepare_entry_summary_vals(self, data):
+        """Values from the public /entry/<id>/ endpoint"""
+        if not data:
+            return {}
+        vals = self._fpl_filter_vals(self._name, data, exclude={
+            'id', 'kits', 'leagues', 'joined_time', 'favourite_team', 'last_deadline_bank', 'last_deadline_value',
+        })
+        favourite_team = self.env['fpl.teams']._get_teams_by_api_id().get(data.get('favourite_team'))
+        vals.update({
+            'joined_time': self._fpl_parse_datetime(data.get('joined_time')),
+            'favourite_team': favourite_team.id if favourite_team else False,
+            'last_deadline_bank': self._fpl_tenths(data.get('last_deadline_bank')),
+            'last_deadline_value': self._fpl_tenths(data.get('last_deadline_value')),
+        })
+        return vals
+
+    def _prepare_manager_team_vals(self, data):
+        """Values from the private /my-team/<id>/ endpoint"""
+        if not data:
+            return {}
+        transfers = data.get('transfers') or {}
+        return {
+            'picks_last_updated': self._fpl_parse_datetime(data.get('picks_last_updated')),
+            'cost': transfers.get('cost'),
+            'status': transfers.get('status'),
+            'limit': transfers.get('limit'),
+            'made': transfers.get('made'),
+            'bank': self._fpl_tenths(transfers.get('bank')),
+            'value': self._fpl_tenths(transfers.get('value')),
+        }
+
+    def _sync_leagues(self, leagues_by_type):
+        """Leagues of the manager and their active phases (overall + current month)."""
+        self.ensure_one()
+        Leagues = self.env['fpl.leagues']
+        phases = {phase.phase_id: phase for phase in self.env['fpl.phases'].search([])}
+        existing = {(league.type, league.league_id): league
+                    for league in Leagues.search([('manager_id', '=', self.id)])}
+        vals_by_key, active_phases_by_key = {}, {}
+        for league_type, leagues in leagues_by_type.items():
+            for league in leagues:
+                key = (league_type, league['id'])
+                vals = self._fpl_filter_vals(Leagues._name, league, exclude={'id', 'created', 'active_phases'})
+                vals.update({
+                    'type': league_type,
+                    'league_id': league['id'],
+                    'manager_id': self.id,
+                    'created': self._fpl_parse_datetime(league.get('created')),
+                })
+                vals_by_key[key] = vals
+                active_phases_by_key[key] = league.get('active_phases') or []
+
+        leagues = self._fpl_upsert(Leagues, existing, vals_by_key, unlink_missing=True)
+
+        ActivePhases = self.env['fpl.league.active.phases']
+        existing_phases = {
+            (phase.league_id.id, phase.phase_id.id): phase
+            for phase in ActivePhases.search([('league_id', 'in', [league.id for league in leagues.values()])])
+        }
+        phase_vals = {}
+        for key, active_phases in active_phases_by_key.items():
+            league = leagues[key]
+            for active_phase in active_phases:
+                phase = phases.get(active_phase.get('phase'))
+                if not phase:
+                    continue
+                phase_vals[(league.id, phase.id)] = {
+                    'league_id': league.id,
+                    'phase_id': phase.id,
+                    'rank': active_phase.get('rank'),
+                    'last_rank': active_phase.get('last_rank'),
+                    'rank_sort': active_phase.get('rank_sort'),
+                    'total': active_phase.get('total'),
+                    'rank_count': active_phase.get('rank_count'),
+                    'entry_percentile_rank': active_phase.get('entry_percentile_rank'),
+                }
+        self._fpl_upsert(ActivePhases, existing_phases, phase_vals, unlink_missing=True)
+
+    def _sync_league_standings(self):
+        """First page of the standings of every active phase of the classic leagues."""
+        self.ensure_one()
+        Standings = self.env['fpl.league.standings.results']
+        leagues = self.env['fpl.leagues'].search([('manager_id', '=', self.id), ('type', '=', 'classic')])
+        calls = {
+            (league, active_phase.phase_id): (
+                'get_league_standings', (league.league_id, 1, active_phase.phase_id.phase_id),
+            )
+            for league in leagues
+            for active_phase in league.active_phases_ids
+            if active_phase.phase_id
+        }
+        results, errors = self._fpl_fetch_many(calls)
+        for (league, phase), error in errors.items():
+            _logger.warning("Standings of league %s (%s) could not be fetched: %s", league.name, phase.name, error)
+
+        existing = {
+            (row.league_id.id, row.phase_id.id, row.result_id): row
+            for row in Standings.search([('league_id', 'in', leagues.ids)])
+        }
+        vals_by_key = {}
+        last_updated = {}
+        for (league, phase), data in results.items():
+            data = data or {}
+            for row in (data.get('standings') or {}).get('results') or []:
+                vals_by_key[(league.id, phase.id, row.get('entry'))] = {
+                    'league_id': league.id,
+                    'phase_id': phase.id,
+                    'result_id': row.get('entry'),
+                    'entry': row.get('entry'),
+                    'entry_name': row.get('entry_name'),
+                    'player_name': row.get('player_name'),
+                    'club_badge_src': row.get('club_badge_src'),
+                    'event_total': row.get('event_total'),
+                    'rank': row.get('rank'),
+                    'last_rank': row.get('last_rank'),
+                    'rank_sort': row.get('rank_sort'),
+                    'total': row.get('total'),
+                    'has_played': bool(row.get('has_played')),
+                }
+            if data.get('last_updated_data'):
+                last_updated[league] = self._fpl_parse_datetime(data['last_updated_data'])
+
+        self._fpl_upsert(Standings, existing, vals_by_key)
+        # Remove the entries that left the first page, and the standings of
+        # phases that are not active anymore; but keep the rows of a standing
+        # that could not be fetched this time.
+        failed = {(league.id, phase.id) for league, phase in errors}
+        obsolete = Standings.browse([
+            row.id for key, row in existing.items() if key not in vals_by_key and key[:2] not in failed
+        ])
+        obsolete.unlink()
+        for league, date in last_updated.items():
+            if league.last_updated_data != date:
+                league.last_updated_data = date
+
+    def _sync_entry_history(self, data):
+        self.ensure_one()
+        History = self.env['fpl.entry.history']
+        events = self.env['fpl.events']._get_events_by_api_id()
+        # The API only returns the current season: never touch the rows of previous seasons
+        existing = {
+            history.event_id.id: history
+            for history in History.search([
+                ('manager_id', '=', self.id), ('event_id', 'in', [event.id for event in events.values()]),
+            ])
+        }
+        vals_by_key = {}
+        for history in data.get('current') or []:
+            event = events.get(history.get('event'))
+            if not event:
                 continue
-                
-            val = {
-                'event_id': event_record.id,
+            vals_by_key[event.id] = {
+                'manager_id': self.id,
+                'event_id': event.id,
                 'points': history.get('points'),
                 'total_points': history.get('total_points'),
                 'rank': history.get('rank'),
                 'rank_sort': history.get('rank_sort'),
                 'overall_rank': history.get('overall_rank'),
-                'bank': history.get('bank'),
-                'value': history.get('value'),
+                'bank': self._fpl_tenths(history.get('bank')),
+                'value': self._fpl_tenths(history.get('value')),
                 'event_transfers': history.get('event_transfers'),
-                'event_transfer_cost': history.get('event_transfer_cost'),
+                'event_transfer_cost': history.get('event_transfers_cost'),
                 'points_on_bench': history.get('points_on_bench'),
-                'manager_id': manager_id,
             }
-            
-            existing_record = existing_history.get(event_id)
-            if existing_record:
-                needs_update = False
-                for key, new_val in val.items():
-                    if key != 'manager_id' and hasattr(existing_record, key):
-                        current_val = getattr(existing_record, key)
-                        # Handle Many2one fields by comparing IDs
-                        if hasattr(current_val, 'id'):
-                            current_val = current_val.id
-                        if current_val != new_val:
-                            needs_update = True
-                            break
-                if needs_update:
-                    history_to_update.append((existing_record, val))
-            else:
-                history_to_create.append(val)
+        self._fpl_upsert(History, existing, vals_by_key, unlink_missing=True)
 
-        past_to_create = []
-        past_to_update = []
-        current_past_seasons = set()
-        
-        for past in data.get('past', []):
-            season_name = past.get('season_name')
-            current_past_seasons.add(season_name)
-            
-            val = {
-                'season_name': season_name,
+        Past = self.env['fpl.past']
+        existing_past = {past.season_name: past for past in Past.search([('manager_id', '=', self.id)])}
+        past_vals = {
+            past.get('season_name'): {
+                'manager_id': self.id,
+                'season_name': past.get('season_name'),
                 'total_poinst': past.get('total_points'),
                 'rank': past.get('rank'),
-                'manager_id': manager_id,
             }
-            
-            existing_record = existing_past.get(season_name)
-            if existing_record:
-                needs_update = False
-                for key, new_val in val.items():
-                    if key != 'manager_id' and hasattr(existing_record, key) and getattr(existing_record, key) != new_val:
-                        needs_update = True
-                        break
-                if needs_update:
-                    past_to_update.append((existing_record, val))
-            else:
-                past_to_create.append(val)
-        
-        obsolete_history = [rec for event_id, rec in existing_history.items() if event_id not in current_history_events]
-        obsolete_past = [rec for season, rec in existing_past.items() if season not in current_past_seasons]
-        
-        if obsolete_history:
-            for rec in obsolete_history:
-                rec.unlink()
-        if obsolete_past:
-            for rec in obsolete_past:
-                rec.unlink()
-        
-        created_history = self.env['fpl.entry.history'].create(history_to_create) if history_to_create else self.env['fpl.entry.history']
-        created_past = self.env['fpl.past'].create(past_to_create) if past_to_create else self.env['fpl.past']
-        
-        for record, vals in history_to_update:
-            record.write(vals)
-        for record, vals in past_to_update:
-            record.write(vals)
-        
-        if history_to_create or past_to_create:
-            all_history = list(existing_history.values()) + list(created_history)
-            all_past = list(existing_past.values()) + list(created_past)
-            
-            self.write({
-                'entry_history_ids': [(6, 0, [h.id for h in all_history])],
-                'entry_past_ids': [(6, 0, [p.id for p in all_past])]
-            })
-
-    def _update_from_manager_team(self, data, manager_id):
-        """Update model fields from manager team API response"""
-        if not data:
-            return
-        update_vals = {
-            'picks_last_updated': datetime.fromisoformat(data.get('picks_last_updated').replace('Z', '')),
-            "cost": data.get('transfers', {}).get('cost'),
-            "status": data.get('transfers', {}).get('status'),
-            "limit": data.get('transfers', {}).get('limit'),
-            "made": data.get('transfers', {}).get('made'),
-            "bank": data.get('transfers', {}).get('bank') / 10,
-            "value": data.get('transfers', {}).get('value') / 10,
-            # 'pick_ids': self._update_manager_picks_data(data.get('picks', []), manager_id),
-            'manager_chip_ids': self._update_manager_chips_data(data.get('chips', []), manager_id),
+            for past in data.get('past') or []
         }
-        if update_vals:
-            self.write(update_vals)
-        
-        self._update_manager_picks_data(data.get('picks', []), manager_id)
+        self._fpl_upsert(Past, existing_past, past_vals, unlink_missing=True)
 
-    def _update_manager_picks_data(self, picks, manager_id):
-        """Make the manager's picks match the API result: update the picks that are still in the team,
-        create the new ones and delete every pick that is no longer returned by the API"""
-        Picks = self.env['fpl.picks']
-        existing_picks = Picks.search([('manager_id', '=', manager_id)])
-        elements_dict = {e.element_id: e for e in self.env['fpl.elements'].search(
-            [('element_id', 'in', [pick.get('element') for pick in picks])])}
-        element_types_dict = {et.element_type_id: et for et in self.env['fpl.element.types'].search(
-            [('element_type_id', 'in', [str(pick.get('element_type')) for pick in picks])])}
-
-        picks_to_keep = Picks
-        picks_to_create = []
-        for pick in picks:
-            element = elements_dict.get(pick.get('element'))
-            if not element:
-                _logger.warning(f"Unknown FPL element {pick.get('element')} in picks of manager {manager_id}")
-                continue
-            element_type = element_types_dict.get(str(pick.get('element_type')))
-            vals = {
-                'manager_id': manager_id,
-                'element_id': element.id,
-                'element_type_id': element_type.id if element_type else False,
-                'position': pick.get('position'),
-                'multiplier': pick.get('multiplier'),
-                'is_captain': pick.get('is_captain'),
-                'is_vice_captain': pick.get('is_vice_captain'),
-                'selling_price': (pick.get('selling_price') or 0) / 10,
-                'purchase_price': (pick.get('purchase_price') or 0) / 10,
-            }
-            existing_pick = existing_picks.filtered(lambda p: p.element_id == element)[:1]
-            if existing_pick:
-                existing_pick.write(vals)
-                picks_to_keep |= existing_pick
-            else:
-                picks_to_create.append(vals)
-
-        # Players sold since the last sync (and duplicated picks) are no longer part of the team
-        (existing_picks - picks_to_keep).unlink()
-        if picks_to_create:
-            Picks.create(picks_to_create)
-
-    def _update_manager_chips_data(self, chips, manager_id):
-        if not chips:
-            existing_chips = self.env['fpl.manager.chips'].search([('manager_id', '=', manager_id)])
-            if existing_chips:
-                existing_chips.unlink()
-            return []
-        
-        existing_chips = {c.chip_id.chip_id: c for c in self.env['fpl.manager.chips'].search([('manager_id', '=', manager_id)])}
-        
-        chip_ids = [str(chip.get('id')) for chip in chips]
-        chips_dict = {c.chip_id: c for c in self.env['fpl.chips'].search([('chip_id', 'in', chip_ids)])}
-        
-        chips_to_create = []
-        chips_to_update = []
-        current_chips = set()
-        
+    def _sync_manager_chips(self, chips):
+        self.ensure_one()
+        ManagerChips = self.env['fpl.manager.chips']
+        chips_by_api_id = {chip.chip_id: chip for chip in self.env['fpl.chips'].search([])}
+        statuses = dict(ManagerChips._fields['status_for_entry'].selection)
+        existing = {chip.chip_id.id: chip for chip in ManagerChips.search([('manager_id', '=', self.id)])}
+        vals_by_key = {}
         for chip in chips:
-            chip_api_id = str(chip.get('id'))
-            current_chips.add(chip_api_id)
-            
-            chip_record = chips_dict.get(chip_api_id)
+            chip_record = chips_by_api_id.get(str(chip.get('id')))
             if not chip_record:
                 continue
-                
-            status_for_entry = chip.get('status_for_entry')
-            if status_for_entry not in dict(self.env['fpl.manager.chips']._fields['status_for_entry'].selection):
-                _logger.warning(f"Unknown chip status_for_entry from FPL API: {status_for_entry}")
-                status_for_entry = False
-
-            chip_vals = {
+            status = chip.get('status_for_entry')
+            if status not in statuses:
+                _logger.warning("Unknown chip status_for_entry from FPL API: %s", status)
+                status = False
+            vals_by_key[chip_record.id] = {
+                'manager_id': self.id,
                 'chip_id': chip_record.id,
-                'status_for_entry': status_for_entry,
+                'status_for_entry': status,
                 'played_by_entry': chip.get('played_by_entry'),
-                'is_pending': chip.get('is_pending'),
-                'manager_id': manager_id,
+                'is_pending': bool(chip.get('is_pending')),
             }
-            
-            existing_chip = existing_chips.get(chip_api_id)
-            if existing_chip:
-                needs_update = False
-                for key, new_val in chip_vals.items():
-                    if key != 'manager_id' and hasattr(existing_chip, key):
-                        current_val = getattr(existing_chip, key)
-                        # Handle Many2one fields by comparing IDs
-                        if hasattr(current_val, 'id'):
-                            current_val = current_val.id
-                        if current_val != new_val:
-                            needs_update = True
-                            break
-                if needs_update:
-                    chips_to_update.append((existing_chip, chip_vals))
-            else:
-                chips_to_create.append(chip_vals)
-        
-        obsolete_chips = [chip for chip_id, chip in existing_chips.items() if chip_id not in current_chips]
-        if obsolete_chips:
-            for chip in obsolete_chips:
-                chip.unlink()
-        
-        for chip, vals in chips_to_update:
-            chip.write(vals)
-        
-        if chips_to_create:
-            created_chips = self.env['fpl.manager.chips'].create(chips_to_create)
-            return [(0, 0, {'id': chip.id}) for chip in created_chips]
-        else:
-            return []
-    
-    def _update_from_manager_data(self, data):
-        """Update model fields from manager data API response"""
-        if not data:
-            return
-        region_code = next((region['iso_code_short'] for region in REGIONS if region['id'] == data.get('region')), None)
-        update_vals = {
-            'default_event': data.get('default_event'),
-            'dirty': data.get('dirty'),
-            'date_of_birth': data.get('date_of_birth'),
-            'first_name': data.get('first_name'),
-            'last_name': data.get('last_name'),
-            'full_name': f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
-            'email': data.get('email'),
-            'gender': data.get('gender'),
-            'manager_data_id': data.get('id'),
-            'region': data.get('region'),
-            'country_id': self.env['res.country'].search([('code', '=', region_code)], limit=1).id or False,
-            'entry_email': data.get('entry_email'),
-            'entry_language': data.get('entry_language'),
-        }
-                
-        if update_vals:
-            self.write(update_vals)
-    
-    def _update_from_entry_summary(self, data, manager_id):
-        """Update model fields from entry summary API response"""
-        if not data:
-            return
-        
-        league_classic_ids = self._update_manager_leagues_data(data.get('leagues', []).get('classic'), manager_id, 'classic')
-        league_h2h_ids = self._update_manager_leagues_data(data.get('leagues', []).get('h2h'), manager_id, 'h2h')
-        
-        update_vals = {
-            'favourite_team': self.env['fpl.teams'].search([('team_id', '=', data.get('favourite_team'))], limit=1).id or False,
-            'joined_time': datetime.fromisoformat(data.get('joined_time').replace('Z', '')),
-            'started_event': data.get('started_event'),
-            'player_first_name': data.get('player_first_name'),
-            'player_last_name': data.get('player_last_name'),
-            'player_region_id': data.get('player_region_id'),
-            'player_region_name': data.get('player_region_name'),
-            'years_active': data.get('years_active'),
-            'summary_overall_points': data.get('summary_overall_points'),
-            'summary_overall_rank': data.get('summary_overall_rank'),
-            'summary_event_points': data.get('summary_event_points'),
-            'summary_event_rank': data.get('summary_event_rank'),
-            'current_event': data.get('current_event'),
-            'name': data.get('name'),
-            'name_change_blocked': data.get('name_change_blocked'),
-            'last_deadline_bank': data.get('last_deadline_bank') / 10 if data.get('last_deadline_bank') else None,
-            'last_deadline_value': data.get('last_deadline_value') / 10 if data.get('last_deadline_value') else None,
-            'last_deadline_total_transfers': data.get('last_deadline_total_transfers'),
-            'league_classic_ids': [(6, 0, league_classic_ids)],
-            'league_h2h_ids': [(6, 0, league_h2h_ids)],
-        }
-        
-        if update_vals:
-            self.write(update_vals)
+        self._fpl_upsert(ManagerChips, existing, vals_by_key, unlink_missing=True)
 
-    def _update_manager_leagues_data(self, datas, manager_id, type):
-        if not datas:
-            existing_leagues = self.env['fpl.leagues'].search([('manager_id', '=', manager_id), ('type', '=', type)])
-            if existing_leagues:
-                existing_leagues.active_phases_ids.unlink()
-                existing_leagues.unlink()
-            return []
-        
-        existing_leagues = {l.league_id: l for l in self.env['fpl.leagues'].search([('manager_id', '=', manager_id), ('type', '=', type)])}
-        
-        leagues_to_create = []
-        leagues_to_update = []
-        current_leagues = set()
-        
-        for league in datas:
-            league_api_id = league.get('id')
-            current_leagues.add(league_api_id)
-            
-            val = {
-                'type': type,
-                'league_id': league_api_id,
-                'name': league.get('name'),
-                'short_name': league.get('short_name'),
-                'created': datetime.fromisoformat(league.get('created').replace('Z', '')),
-                'closed': league.get('closed'),
-                'max_entries': league.get('max_entries'),
-                'league_type': league.get('league_type'),
-                'scoring': league.get('scoring'),
-                'admin_entry': league.get('admin_entry'),
-                'start_event': league.get('start_event'),
-                'entry_can_leave': league.get('entry_can_leave'),
-                'entry_can_admin': league.get('entry_can_admin'),
-                'entry_can_invite': league.get('entry_can_invite'),
-                'has_cup': league.get('has_cup'),
-                'cup_league': league.get('cup_league'),
-                'cup_qualified': league.get('cup_qualified'),
-                'rank_count': league.get('rank_count'),
-                'entry_percentile_rank': league.get('entry_percentile_rank'),
-                'entry_rank': league.get('entry_rank'),
-                'entry_last_rank': league.get('entry_last_rank'),
-                'manager_id': manager_id,
-            }
-            
-            existing_league = existing_leagues.get(league_api_id)
-            if existing_league:
-                needs_update = False
-                for key, new_val in val.items():
-                    if key != 'manager_id' and hasattr(existing_league, key) and getattr(existing_league, key) != new_val:
-                        needs_update = True
-                        break
-                
-                if needs_update:
-                    leagues_to_update.append((existing_league, val, league.get('active_phases')))
-                else:
-                    leagues_to_update.append((existing_league, {}, league.get('active_phases')))
+    def _sync_manager_picks(self, picks):
+        """Make the current squad match the API: players sold since the last
+        sync are removed."""
+        self.ensure_one()
+        Picks = self.env['fpl.picks']
+        elements = {
+            element.element_id: element
+            for element in self.env['fpl.elements'].search([('element_id', 'in', [p.get('element') for p in picks])])
+        }
+        element_types = self.env['fpl.element.types']._get_types_by_api_id()
+        existing = {}
+        duplicates = Picks
+        for pick in Picks.search([('manager_id', '=', self.id)]):
+            if pick.element_id.id in existing:
+                duplicates |= pick
             else:
-                val['active_phases_ids'] = self._get_league_phases_val(league.get('active_phases'))
-                leagues_to_create.append(val)
-        
-        obsolete_leagues = [league for league_id, league in existing_leagues.items() if league_id not in current_leagues]
-        if obsolete_leagues:
-            for league in obsolete_leagues:
-                league.active_phases_ids.unlink()
-                league.unlink()
-        
-        updated_league_ids = []
-        for league, vals, active_phases in leagues_to_update:
-            if vals:
-                league.write(vals)
-            
-            if active_phases is not None:
-                league.active_phases_ids.unlink()
-                new_phases = self._get_league_phases_val(active_phases)
-                if new_phases:
-                    phase_records = self.env['fpl.league.active.phases'].create([vals for _, _, vals in new_phases])
-                    league.write({'active_phases_ids': [(6, 0, phase_records.ids)]})
-            
-            updated_league_ids.append(league.id)
-        
-        if leagues_to_create:
-            created_leagues = self.env['fpl.leagues'].create(leagues_to_create)
-            return updated_league_ids + created_leagues.ids
-        else:
-            return updated_league_ids
-                
-    def _update_league_standings(self, league_phases):
-        try:
-            for leauge, active_phases in league_phases.items():
-                for phase in active_phases:
-                    existing_standings = {s.result_id: s for s in self.env['fpl.league.standings.results'].search([('league_id', '=', leauge.id), ('phase_id', '=', phase.id)])}
-                    
-                    leauge_standing_datas = self.sync_from_fpl_api('get_league_standings', league_id=leauge.league_id, phase=phase.phase_id.phase_id)
-                    standings = leauge_standing_datas.get('standings', {})
-                    results = standings.get('results', [])
-                    
-                    standings_to_create = []
-                    standings_to_update = []
-                    current_result_ids = set()
-                    
-                    for rs in results:
-                        result_id = rs.get('entry')
-                        current_result_ids.add(result_id)
-                        
-                        standing_vals = rs.copy()
-                        standing_vals.update({
-                            'result_id': result_id,
-                            'league_id': leauge.id,
-                            'phase_id': phase.phase_id.id,
-                        })
-                        
-                        existing_standing = existing_standings.get(result_id)
-                        if existing_standing:
-                            needs_update = False
-                            for key, new_val in standing_vals.items():
-                                if hasattr(existing_standing, key) and getattr(existing_standing, key) != new_val:
-                                    needs_update = True
-                                    break
-                            if needs_update:
-                                standings_to_update.append((existing_standing, standing_vals))
-                        else:
-                            standings_to_create.append(standing_vals)
-                    
-                    obsolete_standings = [s for result_id, s in existing_standings.items() if result_id not in current_result_ids]
-                    if obsolete_standings:
-                        for s in obsolete_standings:
-                            s.unlink()
-                    
-                    for standing, vals in standings_to_update:
-                        standing.write(vals)
-                    
-                    if standings_to_create:
-                        self.env['fpl.league.standings.results'].create(standings_to_create)
-                    
-                    if leauge_standing_datas.get('last_updated_data'):
-                        leauge.write({'last_updated_data': datetime.fromisoformat(leauge_standing_datas.get('last_updated_data').replace('Z', ''))})
+                existing[pick.element_id.id] = pick
+        duplicates.unlink()
 
-       
-        except FPLApiException as e:
-                _logger.error(f"Failed to sync league standings data: {str(e)}")
-                raise UserError(f"Failed to sync league standings data: {str(e)}")
-        except Exception as e:
-                _logger.error(f"Unexpected error during sync: {str(e)}")
-                raise UserError(f"Unexpected error during sync: {str(e)}")
-        
-    def _get_league_phases_val(self, phases):
-        val = []
-        for phase in phases:
-            phase_id = self.env['fpl.phases'].search([('phase_id', '=', phase.get('phase'))], limit=1)
-            if not phase_id:
+        vals_by_key = {}
+        for pick in picks:
+            element = elements.get(pick.get('element'))
+            if not element:
+                _logger.warning("Unknown FPL element %s in picks of manager %s", pick.get('element'), self.manager_id)
                 continue
-            phase_val = {
-                'phase_id': phase_id.id,
-                'rank': phase.get('rank'),
-                'last_rank': phase.get('last_rank'),
-                'rank_sort': phase.get('rank_sort'),
-                'total': phase.get('total'),
-                'rank_count': phase.get('rank_count'),
-                'entry_percentile_rank': phase.get('entry_percentile_rank'),
+            element_type = element_types.get(str(pick.get('element_type')))
+            vals_by_key[element.id] = {
+                'manager_id': self.id,
+                'element_id': element.id,
+                'element_type_id': element_type.id if element_type else element.element_type_id.id,
+                'position': pick.get('position'),
+                'multiplier': pick.get('multiplier'),
+                'is_captain': bool(pick.get('is_captain')),
+                'is_vice_captain': bool(pick.get('is_vice_captain')),
+                'selling_price': self._fpl_tenths(pick.get('selling_price')),
+                'purchase_price': self._fpl_tenths(pick.get('purchase_price')),
             }
-            val.append((0, 0, phase_val))
-        return val
+        self._fpl_upsert(Picks, existing, vals_by_key, unlink_missing=True)

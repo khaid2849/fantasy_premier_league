@@ -324,28 +324,28 @@
                 <field name="first_name"/>
                 <field name="second_name"/>
                 <separator string="Price"/>
-                <filter string="14.5" name="now_cost" domain="[('now_cost', '&lt;=', 14.5)]"/>
-                <filter string="14.0" name="now_cost" domain="[('now_cost', '&lt;=', 14.0)]"/>
-                <filter string="13.5" name="now_cost" domain="[('now_cost', '&lt;=', 13.5)]"/>
-                <filter string="13.0" name="now_cost" domain="[('now_cost', '&lt;=', 13.0)]"/>
-                <filter string="12.5" name="now_cost" domain="[('now_cost', '&lt;=', 12.5)]"/>
-                <filter string="12.0" name="now_cost" domain="[('now_cost', '&lt;=', 12.0)]"/>
-                <filter string="11.5" name="now_cost" domain="[('now_cost', '&lt;=', 11.5)]"/>
-                <filter string="11.0" name="now_cost" domain="[('now_cost', '&lt;=', 11.0)]"/>
-                <filter string="10.5" name="now_cost" domain="[('now_cost', '&lt;=', 10.5)]"/>
-                <filter string="10.0" name="now_cost" domain="[('now_cost', '&lt;=', 10.0)]"/>
-                <filter string="9.5" name="now_cost" domain="[('now_cost', '&lt;=', 9.5)]"/>
-                <filter string="9.0" name="now_cost" domain="[('now_cost', '&lt;=', 9.0)]"/>
-                <filter string="8.5" name="now_cost" domain="[('now_cost', '&lt;=', 8.5)]"/>
-                <filter string="8.0" name="now_cost" domain="[('now_cost', '&lt;=', 8.0)]"/>
-                <filter string="7.5" name="now_cost" domain="[('now_cost', '&lt;=', 7.5)]"/>
-                <filter string="7.0" name="now_cost" domain="[('now_cost', '&lt;=', 7.0)]"/>
-                <filter string="6.5" name="now_cost" domain="[('now_cost', '&lt;=', 6.5)]"/>
-                <filter string="6.0" name="now_cost" domain="[('now_cost', '&lt;=', 6.0)]"/>
-                <filter string="5.5" name="now_cost" domain="[('now_cost', '&lt;=', 5.5)]"/>
-                <filter string="5.0" name="now_cost" domain="[('now_cost', '&lt;=', 5.0)]"/>
-                <filter string="4.5" name="now_cost" domain="[('now_cost', '&lt;=', 4.5)]"/>
-                <filter string="4.0" name="now_cost" domain="[('now_cost', '&lt;=', 4.0)]"/>
+                <filter string="14.5" name="now_cost_145" domain="[('now_cost', '&lt;=', 14.5)]"/>
+                <filter string="14.0" name="now_cost_140" domain="[('now_cost', '&lt;=', 14.0)]"/>
+                <filter string="13.5" name="now_cost_135" domain="[('now_cost', '&lt;=', 13.5)]"/>
+                <filter string="13.0" name="now_cost_130" domain="[('now_cost', '&lt;=', 13.0)]"/>
+                <filter string="12.5" name="now_cost_125" domain="[('now_cost', '&lt;=', 12.5)]"/>
+                <filter string="12.0" name="now_cost_120" domain="[('now_cost', '&lt;=', 12.0)]"/>
+                <filter string="11.5" name="now_cost_115" domain="[('now_cost', '&lt;=', 11.5)]"/>
+                <filter string="11.0" name="now_cost_110" domain="[('now_cost', '&lt;=', 11.0)]"/>
+                <filter string="10.5" name="now_cost_105" domain="[('now_cost', '&lt;=', 10.5)]"/>
+                <filter string="10.0" name="now_cost_100" domain="[('now_cost', '&lt;=', 10.0)]"/>
+                <filter string="9.5" name="now_cost_95" domain="[('now_cost', '&lt;=', 9.5)]"/>
+                <filter string="9.0" name="now_cost_90" domain="[('now_cost', '&lt;=', 9.0)]"/>
+                <filter string="8.5" name="now_cost_85" domain="[('now_cost', '&lt;=', 8.5)]"/>
+                <filter string="8.0" name="now_cost_80" domain="[('now_cost', '&lt;=', 8.0)]"/>
+                <filter string="7.5" name="now_cost_75" domain="[('now_cost', '&lt;=', 7.5)]"/>
+                <filter string="7.0" name="now_cost_70" domain="[('now_cost', '&lt;=', 7.0)]"/>
+                <filter string="6.5" name="now_cost_65" domain="[('now_cost', '&lt;=', 6.5)]"/>
+                <filter string="6.0" name="now_cost_60" domain="[('now_cost', '&lt;=', 6.0)]"/>
+                <filter string="5.5" name="now_cost_55" domain="[('now_cost', '&lt;=', 5.5)]"/>
+                <filter string="5.0" name="now_cost_50" domain="[('now_cost', '&lt;=', 5.0)]"/>
+                <filter string="4.5" name="now_cost_45" domain="[('now_cost', '&lt;=', 4.5)]"/>
+                <filter string="4.0" name="now_cost_40" domain="[('now_cost', '&lt;=', 4.0)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Team" name="fpl_team_id" domain="[]" context="{'group_by':'fpl_team_id'}"/>
                     <filter string="Position" name="element_type_id" domain="[]" context="{'group_by':'element_type_id'}"/>
@@ -610,10 +610,8 @@
                                 </group>
                             </page>
 
-                            <page string="Fixutres">
-                                <field name="current_season" invisible="1"/>
-                                <field name="fixutres_ids" widget="one2many" readonly="1" nolabel="1"
-                                       domain="[('season', '=', current_season)]">
+                            <page string="Fixtures">
+                                <field name="fixture_ids" widget="one2many" readonly="1" nolabel="1">
                                     <list>
                                         <field name="kickoff_time" string="Date"/>
                                         <field name="gameweek" string="GW"/>
